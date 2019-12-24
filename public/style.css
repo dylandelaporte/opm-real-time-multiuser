@@ -1,0 +1,12 @@
+body {
+    margin: 0;
+}
+
+.mouse-pointer {
+    position: absolute;
+    z-index: 1;
+    width: 10px;
+    height: 10px;
+    left: 0;
+    top: 0;
+}

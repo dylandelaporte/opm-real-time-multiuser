@@ -1,0 +1,15 @@
+{
+  "name": "opmmodel",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index2.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-hid": "^1.1.0",
+    "socket.io": "^2.3.0"
+  }
+}
