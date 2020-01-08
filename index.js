@@ -277,7 +277,7 @@ if (deviceInfo1) {
 
         let arrByte = Uint8Array.from(buffer);
 
-        //console.log(arrByte, arrByte.length);
+        console.log(arrByte, arrByte.length);
 
         const data = {id: 0, actions: arrByte};
 
@@ -299,7 +299,7 @@ if (deviceInfo2) {
 
         let arrByte = Uint8Array.from(buffer);
 
-        //console.log(arrByte, arrByte.length);
+        console.log(arrByte, arrByte.length);
 
         const data = {id: 1, actions: arrByte};
 

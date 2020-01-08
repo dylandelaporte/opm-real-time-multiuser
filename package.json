@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "node-hid": "^1.1.0",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.3.0",
+    "usb-detection": "^4.7.0"
   }
 }
