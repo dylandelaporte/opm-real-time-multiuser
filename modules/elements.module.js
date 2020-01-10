@@ -37,13 +37,15 @@ elements.add = function (io, type, x, y) {
         //elements.output(io, x[0]);
         //elements.output(io, x[1]);
     } else {
+        const text = "Object";
+
         elements.list[id] = {
             type: type,
             x: x,
             y: y,
-            width: 300,
-            height: 150,
-            text: "Element " + id,
+            width: text.length * 17 + 10,
+            height: 58,
+            text: text,
             beginArrows: [],
             endArrows: [],
             hover: null,

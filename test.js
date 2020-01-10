@@ -14,6 +14,9 @@ devices.monitor(function (devicePath) {
     if (project.mouseAssociations[devicePath]) {
         executeMouseAction(devicePath, project.mouseAssociations[devicePath]);
     }
+    else if (project.keyboardAssociations[devicePath]) {
+        executeKeyboardAction(devicePath, project.keyboardAssociations[devicePath]);
+    }
 });
 
 io.on("connection", client => {
@@ -25,8 +28,8 @@ io.on("connection", client => {
         devices.getAvailableDevices(io, project.mouseAssociations, project.keyboardAssociations);
     });
 
-    client.on("new.user", data => {
-        project.addUser(data);
+    client.on("set.user", data => {
+        project.setUser(data);
     });
 
     client.on("update.window", data => {
@@ -51,6 +54,10 @@ function finishSelectAction(user) {
      */
 
     if (user.action.type === project.action.type.SELECT && user.action.elements.length > 0) {
+        console.log("end select");
+
+        user.action.type = project.action.type.NONE;
+
         const elementId = user.action.elements[0];
 
         elements.list[elementId].selected = null;
@@ -110,7 +117,7 @@ function executeMouseAction(devicePath, userId) {
     else {
         const collisionElement = elements.collisions(device.properties);
 
-        console.log("collisionElement", collisionElement, user.action.type, user.action.status);
+        console.log("collisionElement", collisionElement, user.action.type, user.action.status, user.action.elements);
 
         if (device.properties.click.left) {
             if (user.action.type === project.action.type.MOVE && user.action.status === project.action.status.IN) {
@@ -240,4 +247,41 @@ function executeMouseAction(devicePath, userId) {
     }
 
     devices.mouseOutput(io, userId, devicePath);
+}
+
+function executeKeyboardAction(devicePath, userId) {
+    const device = devices.list[devicePath];
+    const user = project.users[userId];
+
+    if (user.action.type === project.action.type.SELECT) {
+        let element = elements.list[user.action.elements[0]];
+
+        if (element.type === elements.type.OBJECT || element.type === element.type.PROCESS) {
+            const keyBuffer = device.properties.keyBuffer;
+
+            while (keyBuffer.length > 0) {
+                if (keyBuffer[0] === "DELETE") {
+                    element.text = element.text.slice(0, element.text.length - 1);
+                }
+                else if (keyBuffer[0] === "TAB") {
+                    element.text += "   ";
+                }
+                else if (keyBuffer[0] === "SPACE") {
+                    element.text += " ";
+                }
+                else {
+                    element.text += keyBuffer[0];
+                }
+
+                keyBuffer.shift();
+            }
+
+            element.width = element.text.length * 17 + 10;
+
+            elements.output(io, user.action.elements[0]);
+        }
+    }
+    else {
+        device.properties.keyBuffer = [];
+    }
 }

@@ -3,6 +3,13 @@ const socket = io('http://172.16.53.116:3000');
 const mouses = {
     list: {},
     color: ["#D2691E", "#4C99FF"],
+    get: function (id) {
+        if (!mouses.list[id]) {
+            mouses.add(id);
+        }
+
+        return mouses.list[id];
+    },
     add: function (id) {
         const mouseDiv = document.createElement("div");
 
@@ -44,8 +51,8 @@ const elements = {
 
             const lineElement = new Konva.Line({
                 points: positions,
-                stroke: 'red',
-                strokeWidth: 2,
+                stroke: 'black',
+                strokeWidth: 5,
                 lineCap: 'round',
                 lineJoin: 'round'
             });
@@ -60,30 +67,29 @@ const elements = {
         else {
             const textElement = new Konva.Text({
                 x: data.properties.x,
-                y: data.properties.y,
+                y: data.properties.y + 22,
                 text: data.properties.text,
                 fontSize: 18,
                 fontFamily: 'Calibri',
                 fill: '#555',
                 width: data.properties.width,
-                padding: 20,
                 align: 'center'
             });
 
             const areaElement = new Konva.Rect({
                 x: data.properties.x,
                 y: data.properties.y,
-                stroke: '#555',
-                strokeWidth: 3,
-                fill: '#ddd',
+                strokeWidth: 2,
+                stroke: "#000",
+                fill: '#ffffff',
                 width: data.properties.width,
                 height: data.properties.height,
                 shadowColor: 'black',
-                shadowBlur: 10,
-                shadowOffsetX: 10,
-                shadowOffsetY: 10,
-                shadowOpacity: 0.2,
-                cornerRadius: 5
+                shadowBlur: 5,
+                shadowOffsetX: 5,
+                shadowOffsetY: 5,
+                shadowOpacity: 0.1,
+                cornerRadius: 2
             });
 
             layer.add(areaElement);
@@ -94,6 +100,8 @@ const elements = {
                 areaElement: areaElement,
                 textElement: textElement
             };
+
+            elements.selection(data);
         }
 
         elements.stage.add(layer);
@@ -104,32 +112,48 @@ const elements = {
                 elements.list[data.id].lineElement.points(data.properties.positions);
             }
             else {
+                console.log(data.properties.width, data.properties.text, data.properties.hover, data.properties.selected);
+
                 elements.list[data.id].textElement.x(data.properties.x);
-                elements.list[data.id].textElement.y(data.properties.y);
+                elements.list[data.id].textElement.y(data.properties.y + 22);
+
+                elements.list[data.id].textElement.width(data.properties.width);
+
+                elements.list[data.id].textElement.text(data.properties.text);
 
                 elements.list[data.id].areaElement.x(data.properties.x);
                 elements.list[data.id].areaElement.y(data.properties.y);
 
-                if (data.properties.selected !== null) {
-                    elements.list[data.id].areaElement.strokeWidth(5);
-                    elements.list[data.id].areaElement.stroke(mouses.list[data.properties.selected].style.backgroundColor);
-                }
-                else {
-                    elements.list[data.id].areaElement.strokeWidth(3);
+                elements.list[data.id].areaElement.width(data.properties.width);
+                elements.list[data.id].areaElement.height(data.properties.height);
 
-                    if (data.properties.hover !== null) {
-                        elements.list[data.id].areaElement.stroke(mouses.list[data.properties.hover].style.backgroundColor);
-                    }
-                    else {
-                        elements.list[data.id].areaElement.stroke("#555555");
-                    }
-                }
+                elements.selection(data);
             }
 
             elements.list[data.id].layer.draw();
         }
         else {
             elements.add(data);
+        }
+    },
+    selection: function (data) {
+        console.log(data, data.properties.selected);
+
+        if (data.properties.selected !== null) {
+            elements.list[data.id].areaElement.strokeWidth(5);
+            elements.list[data.id].areaElement.stroke(mouses.get(data.properties.selected).style.backgroundColor);
+        }
+        else {
+            elements.list[data.id].areaElement.strokeWidth(3);
+
+            if (data.properties.hover !== null) {
+                elements.list[data.id].areaElement.stroke(mouses.get(data.properties.hover).style.backgroundColor);
+            }
+            else {
+                if (data.properties.type === "object") {
+                    elements.list[data.id].areaElement.stroke("#2e923b");
+                }
+            }
         }
     }
 };
@@ -148,7 +172,7 @@ window.onload = function () {
 
         connected = true;
 
-        socket.emit("new.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "none"})
+        socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "/dev/hidraw2"})
     });
 
     socket.on("disconnect", function () {

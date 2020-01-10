@@ -4,7 +4,7 @@
   "description": "",
   "main": "index2.js",
   "scripts": {
-    "start": "node index.js"
+    "test": "sudo node test.js"
   },
   "author": "",
   "license": "ISC",

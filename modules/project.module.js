@@ -4,6 +4,7 @@ const project = {
     keyboardAssociations: {},
     action: {
         type: {
+            NONE: "none",
             HOVER: "hover",
             MOVE: "move",
             SELECT: "select",
@@ -18,15 +19,17 @@ const project = {
     }
 };
 
-project.addUser = function (data) {
-    project.users[data.id] = {
-        action: {
-            type: project.action.type.HOVER,
-            status: project.action.status.OUT,
-            elements: [],
-            hover: null
-        }
-    };
+project.setUser = function (data) {
+    if (!project.users[data.id]) {
+        project.users[data.id] = {
+            action: {
+                type: project.action.type.HOVER,
+                status: project.action.status.OUT,
+                elements: [],
+                hover: null
+            }
+        };
+    }
 
     project.mouseAssociations[data.mouse] = data.id;
     project.keyboardAssociations[data.keyboard] = data.id;

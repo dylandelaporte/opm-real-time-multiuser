@@ -1,7 +1,59 @@
 const HID = require('node-hid');
 const usbDetect = require('usb-detection');
 
-let devices = {type: {MOUSE: 0, KEYBOARD: 1}, frame: {width: 0, height: 0}, list: {}, callback: null};
+let devices = {
+    type: {
+        MOUSE: 0,
+        KEYBOARD: 1
+    },
+    frame: {
+        width: 0,
+        height: 0
+    },
+    keyMap: {
+        30: ["1", "!"],
+        31: ["2", "@"],
+        32: ["3", "#"],
+        33: ["4", "$"],
+        34: ["5", "%"],
+        35: ["6", "^"],
+        36: ["7", "&"],
+        37: ["8", "*"],
+        38: ["9", "("],
+        39: ["0", ")"],
+        45: ["-", "="],
+        46: ["^", "~"],
+        42: ["DELETE", "DELETE"],
+        43: ["TAB", "TAB"],
+        20: ["q", "Q"],
+        26: ["w", "W"],
+        8: ["e", "E"],
+        21: ["r", "R"],
+        23: ["t", "T"],
+        28: ["y", "Y"],
+        24: ["u", "U"],
+        12: ["i", "I"],
+        18: ["o", "O"],
+        19: ["p", "P"],
+        47: ["[", "{"],
+        48: ["]", "}"],
+        49: ["¥", "|"],
+        57: ["LOCK", "LOCK"],
+        4: ["a", "A"],
+        22: ["s", "S"],
+        7: ["d", "D"],
+        9: ["f", "F"],
+        10: ["g", "G"],
+        11: ["h", "H"],
+        13: ["j", "J"],
+        14: ["k", "K"],
+        15: ["l", "L"],
+        51: [":", ";"],
+        52: ["\"", "'"],
+    },
+    list: {},
+    callback: null
+};
 
 devices.setWindowSize = function (frame) {
     devices.frame = frame;
@@ -12,7 +64,7 @@ devices.monitor = function (callback) {
 
     usbDetect.startMonitoring();
 
-    usbDetect.on('change', function() {
+    usbDetect.on('change', function () {
         devices.refresh();
     });
 
@@ -60,6 +112,27 @@ devices.refresh = function () {
                     });
 
                     devices.list[path] = mouse;
+                } else if (hidDevices[i].product.indexOf("Keyboard") >= 0) {
+                    console.log("keyboard", hidDevices[i]);
+
+                    const keyboard = {
+                        object: new HID.HID(path),
+                        type: devices.type.KEYBOARD,
+                        properties: {
+                            shift: false,
+                            shiftLock: false,
+                            keyBuffer: []
+                        }
+                    };
+
+                    keyboard.object.on("data", function (buffer) {
+                        let dataArray = Uint8Array.from(buffer);
+
+                        devices.keyboardUpdate(path, dataArray);
+                        devices.callback(path);
+                    });
+
+                    devices.list[path] = keyboard;
                 }
             })(i);
         }
@@ -137,6 +210,27 @@ devices.mouseUpdate = function (path, data) {
             properties.click.left = false;
             properties.click.right = false;
             properties.click.wheel = false;
+    }
+};
+
+devices.keyboardUpdate = function (path, data) {
+    console.log("keyboardUpdate", path);
+    console.log("data", data);
+
+    let properties = devices.list[path].properties;
+
+    properties.shift = data[0] === 2 || data[0] === 32;
+
+    for (let i = 2; i < data.length; i++) {
+        let key = devices.keyMap[data[i]];
+
+        if (key) {
+            if (key[0] === "LOCK") {
+                properties.shiftLock = !properties.shiftLock;
+            } else {
+                properties.keyBuffer.push(key[properties.shift || properties.shiftLock ? 1 : 0]);
+            }
+        }
     }
 };
 
