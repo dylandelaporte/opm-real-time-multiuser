@@ -134,6 +134,29 @@ elements.updateArrow = function (id) {
     return arrowElement.positions;
 };
 
+elements.angleNodeArrow = function (id, nodeId) {
+    if (nodeId < 1)
+        return 0;
+
+    const positions = elements.list[id].positions;
+
+    if (nodeId > positions.length / 2)
+        return 0;
+
+    const dAx = positions[nodeId * 2] - positions[nodeId * 2 - 2];
+    const dAy = positions[nodeId * 2 + 1] - positions[nodeId * 2 - 1];
+    const dBx = positions[nodeId * 2 + 2] - positions[nodeId * 2];
+    const dBy = positions[nodeId * 2 + 3] - positions[nodeId * 2 + 1];
+
+    let angle = Math.atan2(dAx * dBy - dAy * dBx, dAx * dBx + dAy * dBy);
+
+    if(angle < 0) {
+        angle = angle * -1;
+    }
+
+    return angle * (180 / Math.PI);
+};
+
 elements.output = function (io, id) {
     //io.emit("element", {id: id, properties: elements.list[id]});
 };

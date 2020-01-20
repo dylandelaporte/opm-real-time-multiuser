@@ -187,6 +187,8 @@ function executeMouseAction(devicePath, userId) {
                 packet.set(packet.KEYS.ELEMENT, elementsOutput);
             } else if (user.action.type === project.action.type.MOVE_NODE_LINK
                 && user.action.status === project.action.status.IN) {
+                const oldPositions = [...elements.list[user.action.elements[0]].positions];
+
                 elements.list[user.action.elements[0]].positions[user.action.elements[1] * 2] =
                     device.properties.left - user.action.gap.x;
                 elements.list[user.action.elements[0]].positions[user.action.elements[1] * 2 + 1] =
@@ -194,7 +196,18 @@ function executeMouseAction(devicePath, userId) {
 
                 const positions = elements.updateArrow(user.action.elements[0]);
 
-                packet.set(packet.KEYS.ELEMENT, {positions: positions}, user.action.elements[0]);
+                const angle = elements.angleNodeArrow(user.action.elements[0], user.action.elements[1]);
+
+                console.log("angle", angle);
+
+                if (angle > 88 && angle < 92) {
+                    console.log("perpendicular angle");
+
+                    elements.list[user.action.elements[0]].positions = oldPositions;
+                }
+                else {
+                    packet.set(packet.KEYS.ELEMENT, {positions: positions}, user.action.elements[0]);
+                }
             }
             //else if (other actions by click) {}
             else {
