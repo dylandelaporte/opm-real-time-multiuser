@@ -36,7 +36,7 @@ project.setUser = function (data) {
 };
 
 project.userOutput = function (io, id) {
-    io.emit("user", {id: id, action: project.users[id]});
+    //io.emit("user", {id: id, action: project.users[id]});
 };
 
 module.exports = project;

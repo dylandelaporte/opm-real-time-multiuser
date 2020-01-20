@@ -8,19 +8,69 @@ const project = require("./modules/project.module");
 devices.setWindowSize({width: 500, height: 500});
 
 devices.monitor(function (devicePath) {
-    //console.log("devicePath", devicePath);
-    //console.log(devices.list[devicePath].properties);
+    let mouseUserId = project.mouseAssociations[devicePath];
+    let keyboardUserId = project.keyboardAssociations[devicePath];
 
-    if (project.mouseAssociations[devicePath]) {
-        executeMouseAction(devicePath, project.mouseAssociations[devicePath]);
+    if (mouseUserId) {
+        packet.clear(mouseUserId);
+        packet.set(packet.KEYS.MOUSE, devices.list[devicePath].properties);
+
+        executeMouseAction(devicePath, mouseUserId);
+
+        packet.send();
     }
-    else if (project.keyboardAssociations[devicePath]) {
-        executeKeyboardAction(devicePath, project.keyboardAssociations[devicePath]);
+    else if (keyboardUserId) {
+        packet.clear(keyboardUserId);
+
+        executeKeyboardAction(devicePath, keyboardUserId);
+
+        packet.send();
     }
 });
 
+let packet = {
+    KEYS: {
+        MOUSE: "m",
+        ELEMENT: "e",
+        ACTION: "a"
+    },
+    clear: function (id) {
+        if (id) {
+            packet.data = {id: id};
+        }
+        else {
+            packet.data = {};
+        }
+    },
+    set: function (key, data, id) {
+        if (id) {
+            if (!packet.data[key]) {
+                packet.data[key] = {};
+            }
+
+            packet.data[key][id] = data;
+        }
+        else {
+            packet.data[key] = data;
+        }
+    },
+    send: function () {
+        io.emit("data", packet.data);
+    },
+    data: {}
+};
+
+function sendElements() {
+    packet.clear();
+    packet.set(packet.KEYS.ELEMENT, elements.list);
+
+    packet.send();
+}
+
 io.on("connection", client => {
     console.log("connection");
+
+    sendElements();
 
     elements.outputAll(io);
 
@@ -64,7 +114,9 @@ function finishSelectAction(user) {
 
         user.action.elements = [];
 
-        elements.output(io, elementId);
+        packet.set(packet.KEYS.ELEMENT, {selected: null}, elementId);
+
+        //elements.output(io, elementId);
     }
 }
 
@@ -81,56 +133,69 @@ function executeMouseAction(devicePath, userId) {
     const upperRange = (devices.frame.width / 2) + ((buttonWidth * 3) / 2);
 
     if (device.properties.top < 20 && device.properties.left >= lowerRange && device.properties.left <= upperRange) {
-        console.log("tools bar");
+        //console.log("tools bar");
 
         if (device.properties.click.left && user.action.status === project.action.status.OUT) {
-            console.log("valid to create action");
+            //console.log("valid to create action");
 
             finishSelectAction(user);
 
             if (device.properties.left > lowerRange + 2 * buttonWidth) {
-                console.log("new link");
+                if (Object.keys(elements.list).length > 1) {
+                    console.log("new link");
 
-                user.action.type = project.action.type.NEW_LINK;
+                    user.action.type = project.action.type.NEW_LINK;
+                    user.action.status = project.action.status.IN;
+                    user.action.elements = [];
 
-                project.userOutput(io, userId);
+                    //project.userOutput(io, userId);
+
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                }
             }
             else if (device.properties.left > lowerRange + buttonWidth) {
                 console.log("new process");
 
                 user.action.type = project.action.type.NEW_PROCESS;
+                user.action.status = project.action.status.IN;
+                user.action.elements = [];
 
-                project.userOutput(io, userId);
+                //project.userOutput(io, userId);
+
+                packet.set(packet.KEYS.ACTION, project.users[userId].action);
             }
             else {
                 console.log("new objects");
 
                 user.action.type = project.action.type.NEW_OBJECT;
+                user.action.status = project.action.status.IN;
+                user.action.elements = [];
 
-                project.userOutput(io, userId);
+                //project.userOutput(io, userId);
+
+                packet.set(packet.KEYS.ACTION, project.users[userId].action);
             }
-
-            user.action.status = project.action.status.IN;
-            user.action.elements = [];
         }
     }
     else {
         const collisionElement = elements.collisions(device.properties);
 
-        console.log("collisionElement", collisionElement, user.action.type, user.action.status, user.action.elements);
+        //console.log("collisionElement", collisionElement, user.action.type, user.action.status, user.action.elements);
 
         if (device.properties.click.left) {
             if (user.action.type === project.action.type.MOVE && user.action.status === project.action.status.IN) {
-                console.log("moving");
+                //console.log("moving");
 
                 //elements.list[user.action.elements[0]].x = device.properties.left - user.action.gap.x;
                 //elements.list[user.action.elements[0]].y = device.properties.top - user.action.gap.y;
 
                 elements.list[user.action.elements[0]].selected = userId;
 
-                elements.move(io, user.action.elements[0],
+                const elementsOutput = elements.move(io, user.action.elements[0],
                     device.properties.left - user.action.gap.x,
                     device.properties.top - user.action.gap.y);
+
+                packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                 //elements.output(io, user.action.elements[0]);
             }
@@ -143,7 +208,9 @@ function executeMouseAction(devicePath, userId) {
                             if (user.action.elements[0] !== collisionElement.id) {
                                 user.action.elements.push(collisionElement.id);
 
-                                elements.add(io, elements.type.ARROW_AGGREGATION, user.action.elements);
+                                const elementsOutput = elements.add(io, elements.type.ARROW_AGGREGATION, user.action.elements);
+
+                                packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                                 user.action.status = project.action.status.OUT;
                             }
@@ -167,19 +234,25 @@ function executeMouseAction(devicePath, userId) {
                             y: device.properties.top - elements.list[collisionElement.id].y
                         };
 
-                        project.userOutput(io, userId);
+                        //project.userOutput(io, userId);
+
+                        packet.set(packet.KEYS.ACTION, project.users[userId].action);
                     }
                 }
                 else {
                     if (user.action.type === project.action.type.NEW_OBJECT
                         && user.action.status === project.action.status.IN) {
-                        elements.add(io, elements.type.OBJECT, device.properties.left, device.properties.top);
+                        const elementsOutput = elements.add(io, elements.type.OBJECT, device.properties.left, device.properties.top);
+
+                        packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                         user.action.status = project.action.status.OUT;
                     }
                     else if (user.action.type === project.action.type.NEW_PROCESS
                         && user.action.status === project.action.status.IN) {
-                        elements.add(io, elements.type.PROCESS, device.properties.left, device.properties.top);
+                        const elementsOutput = elements.add(io, elements.type.PROCESS, device.properties.left, device.properties.top);
+
+                        packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                         user.action.status = project.action.status.OUT;
                     }
@@ -201,52 +274,68 @@ function executeMouseAction(devicePath, userId) {
 
                 elements.list[user.action.elements[0]].selected = userId;
 
-                project.userOutput(io, userId);
-                elements.output(io, user.action.elements[0]);
+                //project.userOutput(io, userId);
+
+                packet.set(packet.KEYS.ACTION, project.users[userId].action);
+
+                //elements.output(io, user.action.elements[0]);
+
+                packet.set(packet.KEYS.ELEMENT, {selected: userId}, user.action.elements[0]);
             }
         }
 
         if (collisionElement !== null) {
+            console.log(collisionElement);
+
             //if (user.action.status === project.action.status.OUT) {
-                console.log("hover");
+                //console.log("hover");
 
                 //user.action.type = project.action.type.HOVER;
 
                 if (user.action.hover === null) {
-                    console.log("new hover");
+                    //console.log("new hover");
 
                     elements.list[collisionElement.id].hover = userId;
                     user.action.hover = collisionElement.id;
 
-                    project.userOutput(io, userId);
-                    elements.output(io, user.action.hover);
+                    //project.userOutput(io, userId);
+
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+
+                    //elements.output(io, user.action.hover);
+
+                    packet.set(packet.KEYS.ELEMENT, {hover: userId}, user.action.hover);
                 } else if (user.action.hover !== collisionElement.id) {
-                    console.log("change hover");
+                    //console.log("change hover");
 
                     elements.list[user.action.hover].hover = null;
 
-                    elements.output(io, user.action.hover);
+                    //elements.output(io, user.action.hover);
 
                     elements.list[collisionElement.id].hover = userId;
                     user.action.hover = collisionElement.id;
 
-                    elements.output(io, user.action.hover);
+                    //elements.output(io, user.action.hover);
+
+                    packet.set(packet.KEYS.ELEMENT, {hover: userId}, user.action.hover);
                 }
             //}
         } else {
             if (user.action.hover !== null) {
-                console.log("stop hover");
+                //console.log("stop hover");
 
                 elements.list[user.action.hover].hover = null;
 
-                elements.output(io, user.action.hover);
+                //elements.output(io, user.action.hover);
+
+                packet.set(packet.KEYS.ELEMENT, {hover: null}, user.action.hover);
 
                 user.action.hover = null;
             }
         }
     }
 
-    devices.mouseOutput(io, userId, devicePath);
+    //devices.mouseOutput(io, userId, devicePath);
 }
 
 function executeKeyboardAction(devicePath, userId) {
@@ -278,7 +367,9 @@ function executeKeyboardAction(devicePath, userId) {
 
             element.width = element.text.length * 17 + 10;
 
-            elements.output(io, user.action.elements[0]);
+            //elements.output(io, user.action.elements[0]);
+
+            packet.set(packet.KEYS.ELEMENT, {text: element.text, width: element.width}, user.action.elements[0]);
         }
     }
     else {

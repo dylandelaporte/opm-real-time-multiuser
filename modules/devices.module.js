@@ -249,7 +249,7 @@ devices.getAvailableDevices = function (io, mouseAssociations, keyboardAssociati
 };
 
 devices.mouseOutput = function (io, userId, devicePath) {
-    io.emit("mouse", {id: userId, properties: devices.list[devicePath].properties});
+    //io.emit("mouse", {id: userId, properties: devices.list[devicePath].properties});
 };
 
 module.exports = devices;
