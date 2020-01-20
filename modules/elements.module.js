@@ -153,20 +153,36 @@ elements.collisions = function (mouseProperties) {
         const element = elements.list[elementIds[i]];
 
         if (element.positions) {
-            const collision = elements.lineRect(
-                element.positions[0],
-                element.positions[1],
-                element.positions[2],
-                element.positions[3],
-                mouseProperties.left,
-                mouseProperties.top,
-                5,
-                5);
+            for (let j = 2; j < element.positions.length - 2; j = j + 2) {
+                const circleCollision = elements.circleRect(
+                    element.positions[j],
+                    element.positions[j + 1],
+                    5,
+                    mouseProperties.left,
+                    mouseProperties.top,
+                    5,
+                    5);
 
-            if (collision) {
-                return {id: elementIds[i], position: collision};
+                if (circleCollision) {
+                    return {id: elementIds[i], node: j / 2};
+                }
             }
 
+            for (let j = 0; j + 2 < element.positions.length; j = j + 2) {
+                const lineCollision = elements.lineRect(
+                    element.positions[j],
+                    element.positions[j + 1],
+                    element.positions[j + 2],
+                    element.positions[j + 3],
+                    mouseProperties.left,
+                    mouseProperties.top,
+                    5,
+                    5);
+
+                if (lineCollision) {
+                    return {id: elementIds[i], position: lineCollision, after: j + 1};
+                }
+            }
         } else {
             if (mouseProperties.left >= elements.list[elementIds[i]].x && mouseProperties.left <= elements.list[elementIds[i]].x + elements.list[elementIds[i]].width) {
                 if (mouseProperties.top >= elements.list[elementIds[i]].y && mouseProperties.top <= elements.list[elementIds[i]].y + elements.list[elementIds[i]].height) {
@@ -229,6 +245,28 @@ elements.lineLine = function (x1, y1, x2, y2, x3, y3, x4, y4) {
     }
 
     return false;
+};
+
+//from http://www.jeffreythompson.org/collision-detection/circle-rect.php
+elements.circleRect = function (cx, cy, radius, rx, ry, rw, rh) {
+
+    // temporary variables to set edges for testing
+    let testX = cx;
+    let testY = cy;
+
+    // which edge is closest?
+    if (cx < rx)         testX = rx;      // test left edge
+    else if (cx > rx+rw) testX = rx+rw;   // right edge
+    if (cy < ry)         testY = ry;      // top edge
+    else if (cy > ry+rh) testY = ry+rh;   // bottom edge
+
+    // get distance from closest edges
+    let distX = cx-testX;
+    let distY = cy-testY;
+    let distance = Math.sqrt( (distX*distX) + (distY*distY) );
+
+    // if the distance is less than the radius, collision!
+    return distance <= radius;
 };
 
 module.exports = elements;

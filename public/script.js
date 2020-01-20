@@ -66,10 +66,13 @@ const elements = {
 
             elements.list[id] = {
                 mainElement: lineElement,
+                nodeElements: [],
                 type: data.type,
                 selected: data.selected,
                 hover: data.hover
             };
+
+            elements.updateNodes(id, data);
         }
         else {
             const textElement = new Konva.Text({
@@ -131,6 +134,8 @@ const elements = {
             if (elements.list[id].type.indexOf("arrow") >= 0) {
                 if (data.positions) {
                     elements.list[id].mainElement.points(data.positions);
+
+                    elements.updateNodes(id, data);
                 }
             }
             else {
@@ -161,12 +166,12 @@ const elements = {
                         elements.list[id].mainElement.y(data.y + elements.list[id].mainElement.height() / 2);
                     }
                 }
+            }
 
-                if (data.selected !== undefined) {
-                    elements.list[id].selected = data.selected;
+            if (data.selected !== undefined) {
+                elements.list[id].selected = data.selected;
 
-                    elements.selection(id);
-                }
+                elements.selection(id);
             }
 
             if (data.hover !== undefined) {
@@ -204,6 +209,45 @@ const elements = {
                         elements.list[id].mainElement.stroke("#000000");
                 }
             }
+        }
+    },
+    updateNodes: function (id, data) {
+        console.log("updateNodes", data.positions);
+
+        let nodeElements = elements.list[id].nodeElements;
+
+        console.log(nodeElements);
+
+        const difference = (data.positions.length / 2) - (nodeElements.length + 2);
+
+        console.log(difference);
+
+        if (difference > 0) {
+            for (let i = 0; i < difference; i++) {
+                const nodeElement = new Konva.Circle({
+                    x: 0,
+                    y: 0,
+                    radius: 5,
+                    fill: "black"
+                });
+
+                nodeElements.push(nodeElement);
+
+                elements.layer.add(nodeElement);
+            }
+        }
+        else if (difference < 0) {
+            for (let i = 0; i < Math.abs(difference); i++) {
+                nodeElements[0].destroy();
+                nodeElements.shift();
+            }
+        }
+
+        console.log(nodeElements);
+
+        for (let i = 0; i < nodeElements.length; i++) {
+            nodeElements[i].x(data.positions[i * 2 + 2]);
+            nodeElements[i].y(data.positions[i * 2 + 3]);
         }
     }
 };

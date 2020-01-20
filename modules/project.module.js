@@ -10,7 +10,10 @@ const project = {
             SELECT: "select",
             NEW_OBJECT: "new_object",
             NEW_PROCESS: "new_process",
-            NEW_LINK: "new_link"
+            NEW_LINK: "new_link",
+            NEW_NODE_LINK: "new_node_link",
+            MOVE_NODE_LINK: "move_node_link",
+            DELETE_NODE_LINK: "delete_node_link"
         },
         status: {
             IN: "in",
