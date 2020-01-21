@@ -4,19 +4,49 @@
     <meta charset="UTF-8">
     <title>Title</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+
+    <link href="css/connect.css" rel="stylesheet">
 </head>
 <body>
-<div id="tools-bar">
-    <div class="button">Object</div>
-    <div class="button">Process</div>
-    <div class="button">Link</div>
+<div class="container">
+    <div id="connection" class="content" style="display: none;">
+        <h1>Server connection</h1>
+        <form id="connection-form">
+            <div class="form-row align-items-center">
+                <div class="col-10">
+                    <input type="text" name="server-url" class="form-control form-control-lg mb-2"
+                           placeholder="Server Url">
+                </div>
+                <div class="col-2">
+                    <button type="submit" name="connect_button" class="btn btn-primary btn-lg mb-2">Attach</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div id="menu" class="content" style="display: none;">
+        <h1>You are attached to</h1>
+        <h2><small id="server-url-text">SERVER</small></h2>
+        <div id="connection-alert" class="alert alert-warning">Unable to connect to the server, please check your
+            connection and your Wifi
+            network!
+        </div>
+        <div id="connected-to-server-actions-div">
+            <a href="view.html" class="btn btn-primary btn-lg btn-block">Edition view</a>
+            <a href="config.html" class="btn btn-outline-secondary btn-lg btn-block">Configuration</a>
+        </div>
+        <button type="button" id="disconnect-button" class="btn btn-outline-dark btn-lg btn-block">Disconnect</button>
+    </div>
 </div>
-<div id="container"></div>
 
 <script src="socket.io.js"></script>
-<script src="konva.min.js"></script>
 
-<script src="script.js"></script>
+<script src="js/jquery.min.js"></script>
+<script src="js/notify.min.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/connect.js"></script>
 </body>
 </html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+
+    <link href="css/config.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div id="settings" class="content" style="display: none;">
+        <a href="index.html" class="btn btn-link">Back to menu</a>
+        <div class="card">
+            <div class="card-body">
+                The server must be in setting mode to edit any parameter. When this mode is activated the edition mode
+                is not available.
+            </div>
+        </div>
+        <button type="button" id="setting-mode-button" class="btn btn-outline-warning btn-lg btn-block">Activate setting mode</button>
+    </div>
+    <div id="error" class="content" style="display: none;">
+        <div class="alert alert-warning">Error! Unable to connect to the server.</div>
+    </div>
+</div>
+</body>
+
+<script src="socket.io.js"></script>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/notify.min.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/config.js"></script>
+</html>
