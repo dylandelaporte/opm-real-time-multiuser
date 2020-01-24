@@ -8,30 +8,58 @@ const project = require("./modules/project.module");
 devices.setWindowSize({width: 500, height: 500});
 
 devices.monitor(function (devicePath) {
-    let mouseUserId = project.mouseAssociations[devicePath];
-    let keyboardUserId = project.keyboardAssociations[devicePath];
+    if (project.mode === project.MODES.SETTING) {
+        packet.clear();
 
-    if (mouseUserId) {
-        packet.clear(mouseUserId);
-        packet.set(packet.KEYS.MOUSE, devices.list[devicePath].properties);
+        if (project.editionUser) {
+            if (devices.list[devicePath].type === devices.type.KEYBOARD) {
+                project.deleteKeyboardUser(project.editionUser);
 
-        executeMouseAction(devicePath, mouseUserId);
+                project.keyboardAssociations[devicePath] = project.editionUser;
+            }
+            else {
+                project.deleteMouseUser(project.editionUser);
+
+                project.mouseAssociations[devicePath] = project.editionUser;
+            }
+
+            project.editionUser = null;
+
+            packet.set(packet.KEYS.GENERAL, project.getGeneral());
+        }
+
+        packet.set(packet.KEYS.DEVICE, devicePath);
 
         packet.send();
-    } else if (keyboardUserId) {
-        packet.clear(keyboardUserId);
+    }
+    else {
+        let mouseUserId = project.mouseAssociations[devicePath];
+        let keyboardUserId = project.keyboardAssociations[devicePath];
 
-        executeKeyboardAction(devicePath, keyboardUserId);
+        if (mouseUserId) {
+            packet.clear(mouseUserId);
+            packet.set(packet.KEYS.MOUSE, devices.list[devicePath].properties);
 
-        packet.send();
+            executeMouseAction(devicePath, mouseUserId);
+
+            packet.send();
+        } else if (keyboardUserId) {
+            packet.clear(keyboardUserId);
+
+            executeKeyboardAction(devicePath, keyboardUserId);
+
+            packet.send();
+        }
     }
 });
 
 let packet = {
     KEYS: {
+        GENERAL: "g",
         MOUSE: "m",
         ELEMENT: "e",
-        ACTION: "a"
+        ACTION: "a",
+        DEVICE: "d"
     },
     clear: function (id) {
         if (id) {
@@ -57,9 +85,22 @@ let packet = {
     data: {}
 };
 
-function sendElements() {
+function sendAtConnection() {
     packet.clear();
-    packet.set(packet.KEYS.ELEMENT, elements.list);
+
+    packet.set(packet.KEYS.GENERAL, project.getGeneral());
+
+    if (project.mode === project.MODES.VIEW) {
+        packet.set(packet.KEYS.ELEMENT, elements.list);
+    }
+
+    packet.send();
+}
+
+function sendGeneral() {
+    packet.clear();
+
+    packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
     packet.send();
 }
@@ -67,18 +108,48 @@ function sendElements() {
 io.on("connection", client => {
     console.log("connection");
 
-    sendElements();
+    sendAtConnection();
 
-    elements.outputAll(io);
+    client.on("send.general", () => {
+        sendGeneral();
+    });
 
+    client.on("set.mode", (data) => {
+        console.log(data);
+        if (data.mode === project.MODES.SETTING) {
+            project.mode = project.MODES.SETTING;
+        }
+        else {
+            project.mode = project.MODES.EDITION;
+        }
+
+        sendGeneral();
+    });
+
+    //settings
     client.on("get.availabledevices", () => {
         devices.getAvailableDevices(io, project.mouseAssociations, project.keyboardAssociations);
     });
 
-    client.on("set.user", data => {
-        project.setUser(data);
+    client.on("add.user", data => {
+        project.addUser(data.id);
+
+        sendGeneral();
     });
 
+    client.on("set.edition.user", (data) => {
+        console.log("set.edition.user", data);
+
+        project.editionUser = data.id;
+    });
+
+    client.on("delete.user", data => {
+        project.deleteUser(data.id);
+
+        sendGeneral();
+    });
+
+    //view
     client.on("update.window", data => {
         console.log("window", data);
 
