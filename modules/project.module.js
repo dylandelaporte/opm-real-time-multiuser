@@ -25,7 +25,48 @@ const project = {
             OUT: "out"
         }
     },
-    editionUser: null
+    editionUser: null,
+    toolbar: {
+        "OBJECT_BUTTON": {x: 5, y: 5, width: 100, height: 25, text: "New object"},
+        "PROCESS_BUTTON": {x: 110, y: 5, width: 120, height: 25, text: "New process"},
+        "LINK_BUTTON": {x: 235, y: 5, width: 80, height: 25, text: "New link"}
+    },
+    toolbarDimensions: {
+        x: 5,
+        y: 5,
+        width: 315,
+        height: 30
+    }
+};
+
+project.setToolbar = function (frame) {
+    /*
+    const buttons = Object.keys(project.toolbar);
+
+    for (let i = 0; i < buttons.length; i++) {
+
+    }
+     */
+};
+
+project.isWithinToolbar = function (deviceProperties) {
+    if (deviceProperties.top >= project.toolbarDimensions.y
+        && deviceProperties.top <= project.toolbarDimensions.height
+        && deviceProperties.left >= project.toolbarDimensions.x
+        && deviceProperties.left <= project.toolbarDimensions.width) {
+        const buttons = Object.keys(project.toolbar);
+
+        for (let i = 0; i < buttons.length; i++) {
+            if (deviceProperties.left >= project.toolbar[buttons[i]].x
+                && deviceProperties.left <= project.toolbar[buttons[i]].x + project.toolbar[buttons[i]].width) {
+                return buttons[i];
+            }
+        }
+
+        return false;
+    }
+
+    return false;
 };
 
 project.setUser = function (data) {
@@ -38,6 +79,10 @@ project.setUser = function (data) {
                 hover: null
             }
         };
+    }
+    else {
+        project.deleteMouseUser(data.id);
+        project.deleteKeyboardUser(data.id);
     }
 
     project.mouseAssociations[data.mouse] = data.id;

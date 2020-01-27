@@ -59,7 +59,9 @@ let packet = {
         MOUSE: "m",
         ELEMENT: "e",
         ACTION: "a",
-        DEVICE: "d"
+        DEVICE: "d",
+        WINDOW: "w",
+        TOOLBAR: "t"
     },
     clear: function (id) {
         if (id) {
@@ -90,7 +92,7 @@ function sendAtConnection() {
 
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
-    if (project.mode === project.MODES.VIEW) {
+    if (project.mode === project.MODES.EDITION) {
         packet.set(packet.KEYS.ELEMENT, elements.list);
     }
 
@@ -101,6 +103,15 @@ function sendGeneral() {
     packet.clear();
 
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
+
+    packet.send();
+}
+
+function sendWindow() {
+    packet.clear();
+
+    packet.set(packet.KEYS.WINDOW, devices.frame);
+    packet.set(packet.KEYS.TOOLBAR, project.toolbar);
 
     packet.send();
 }
@@ -137,6 +148,14 @@ io.on("connection", client => {
         sendGeneral();
     });
 
+    client.on("set.user", data => {
+        console.log("set.user", data);
+
+        project.setUser(data);
+
+        sendGeneral();
+    });
+
     client.on("set.edition.user", (data) => {
         console.log("set.edition.user", data);
 
@@ -153,9 +172,12 @@ io.on("connection", client => {
     client.on("update.window", data => {
         console.log("window", data);
 
-        devices.setWindowSize(data);
+        if (Number.isInteger(data.width) && Number.isInteger(data.height)) {
+            devices.setWindowSize(data);
+            project.setToolbar(data);
 
-        io.emit("window", data);
+            sendWindow();
+        }
     });
 
     client.on("disconnect", () => {
@@ -192,23 +214,14 @@ function executeMouseAction(devicePath, userId) {
     const device = devices.list[devicePath];
     const user = project.users[userId];
 
-    //console.log(device.properties);
-    //console.log(user);
-
     //tools bar
-    const buttonWidth = 70;
-    const lowerRange = (devices.frame.width / 2) - ((buttonWidth * 3) / 2);
-    const upperRange = (devices.frame.width / 2) + ((buttonWidth * 3) / 2);
+    const buttonToolbar = project.isWithinToolbar(device.properties);
 
-    if (device.properties.top < 20 && device.properties.left >= lowerRange && device.properties.left <= upperRange) {
-        //console.log("tools bar");
-
+    if (buttonToolbar) {
         if (device.properties.click.left && user.action.status === project.action.status.OUT) {
-            //console.log("valid to create action");
-
             finishSelectAction(user);
 
-            if (device.properties.left > lowerRange + 2 * buttonWidth) {
+            if (buttonToolbar === "LINK_BUTTON") {
                 if (Object.keys(elements.list).length > 1) {
                     console.log("new link");
 
@@ -220,7 +233,7 @@ function executeMouseAction(devicePath, userId) {
 
                     packet.set(packet.KEYS.ACTION, project.users[userId].action);
                 }
-            } else if (device.properties.left > lowerRange + buttonWidth) {
+            } else if (buttonToolbar === "PROCESS_BUTTON") {
                 console.log("new process");
 
                 user.action.type = project.action.type.NEW_PROCESS;
@@ -230,7 +243,7 @@ function executeMouseAction(devicePath, userId) {
                 //project.userOutput(io, userId);
 
                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
-            } else {
+            } else if (buttonToolbar === "OBJECT_BUTTON") {
                 console.log("new objects");
 
                 user.action.type = project.action.type.NEW_OBJECT;

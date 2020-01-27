@@ -1,25 +1,6 @@
 body {
     margin: 0;
-}
-
-#tools-bar {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    margin-left: -105px;
-    z-index: 1;
-}
-
-.button {
-    display: inline-block;
-    width: 70px;
-    height: 20px;
-    margin-right: -4px;
-    box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    border: 1px solid black;
-    text-align: center;
+    background-color: #000000;
 }
 
 .mouse-pointer {

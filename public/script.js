@@ -36,17 +36,84 @@ const mouses = {
 const elements = {
     list: {},
     layer: null,
+    toolbar: {},
     stage: null,
-    init: function () {
-        elements.stage = new Konva.Stage({
-            container: 'container',
-            width: window.innerWidth,
-            height: window.innerHeight
-        });
+    init: function (data) {
+        if (elements.stage !== null) {
+            elements.stage.width(data.width);
+            elements.stage.height(data.height);
 
-        elements.layer = new Konva.Layer();
+            document.getElementById("container").marginLeft = ((window.innerWidth - data.width) / 2) + "px";
+        } else {
+            elements.stage = new Konva.Stage({
+                container: 'container',
+                width: data.width,
+                height: data.height
+            });
 
-        elements.stage.add(elements.layer);
+            const layer = new Konva.Layer();
+            layer.add(new Konva.Rect({
+                x: 0,
+                y: 0,
+                width: data.width,
+                height: data.height,
+                fill: "#FFFFFF"
+            }));
+
+            elements.stage.add(layer);
+
+            elements.layer = new Konva.Layer();
+
+            elements.stage.add(elements.layer);
+
+            document.getElementById("container").style.marginLeft =
+                ((window.innerWidth - data.width) / 2) + "px";
+        }
+    },
+    updateToolbar: function (data) {
+        const buttons = Object.keys(data);
+
+        console.log(buttons, data);
+
+        for (let i = 0; i < buttons.length; i++) {
+            if (elements.toolbar[buttons[i]]) {
+
+            }
+            else {
+                console.log(data[buttons[i]]);
+
+                const button = new Konva.Label({
+                    x: data[buttons[i]].x,
+                    y: data[buttons[i]].y,
+                    opacity: 0.75
+                });
+
+                button.add(new Konva.Tag({
+                    fill: 'black',
+                    lineJoin: 'round',
+                    shadowColor: 'black',
+                    shadowBlur: 10,
+                    shadowOffset: 10,
+                    shadowOpacity: 0.5
+                }));
+
+                button.add(new Konva.Text({
+                    width: data[buttons[i]].width,
+                    height: data[buttons[i]].height,
+                    text: data[buttons[i]].text,
+                    fontFamily: 'Arial',
+                    fontSize: 18,
+                    padding: 5,
+                    fill: 'white'
+                }));
+
+                elements.toolbar[buttons[i]] = button;
+
+                elements.layer.add(button);
+            }
+        }
+
+        elements.layer.draw();
     },
     add: function (id, data) {
         //const layer = new Konva.Layer();
@@ -73,8 +140,7 @@ const elements = {
             };
 
             elements.updateNodes(id, data);
-        }
-        else {
+        } else {
             const textElement = new Konva.Text({
                 x: data.x,
                 y: data.y + 22,
@@ -102,8 +168,7 @@ const elements = {
                     shadowOpacity: 0.1,
                     cornerRadius: 2
                 });
-            }
-            else {
+            } else {
                 areaElement = new Konva.Ellipse({
                     x: data.x + data.width / 2,
                     y: data.y + data.height / 2,
@@ -137,8 +202,7 @@ const elements = {
 
                     elements.updateNodes(id, data);
                 }
-            }
-            else {
+            } else {
                 if (data.text) {
                     elements.list[id].textElement.text(data.text);
                 }
@@ -160,8 +224,7 @@ const elements = {
                     if (elements.list[id].type === "object") {
                         elements.list[id].mainElement.x(data.x);
                         elements.list[id].mainElement.y(data.y);
-                    }
-                    else {
+                    } else {
                         elements.list[id].mainElement.x(data.x + elements.list[id].mainElement.width() / 2);
                         elements.list[id].mainElement.y(data.y + elements.list[id].mainElement.height() / 2);
                     }
@@ -181,8 +244,7 @@ const elements = {
             }
 
             elements.layer.draw();
-        }
-        else {
+        } else {
             elements.add(id, data);
         }
     },
@@ -190,14 +252,12 @@ const elements = {
         if (elements.list[id].selected !== null) {
             elements.list[id].mainElement.strokeWidth(5);
             elements.list[id].mainElement.stroke(mouses.get(elements.list[id].selected).style.backgroundColor);
-        }
-        else {
+        } else {
             elements.list[id].mainElement.strokeWidth(3);
 
             if (elements.list[id].hover !== null) {
                 elements.list[id].mainElement.stroke(mouses.get(elements.list[id].hover).style.backgroundColor);
-            }
-            else {
+            } else {
                 switch (elements.list[id].type) {
                     case "object":
                         elements.list[id].mainElement.stroke("#2e923b");
@@ -235,8 +295,7 @@ const elements = {
 
                 elements.layer.add(nodeElement);
             }
-        }
-        else if (difference < 0) {
+        } else if (difference < 0) {
             for (let i = 0; i < Math.abs(difference); i++) {
                 nodeElements[0].destroy();
                 nodeElements.shift();
@@ -252,12 +311,16 @@ const elements = {
     }
 };
 
+function resize() {
+    socket.emit("update.window", {width: window.innerWidth, height: window.innerHeight});
+}
+
 function memorySizeOf(obj) {
     var bytes = 0;
 
     function sizeOf(obj) {
-        if(obj !== null && obj !== undefined) {
-            switch(typeof obj) {
+        if (obj !== null && obj !== undefined) {
+            switch (typeof obj) {
                 case 'number':
                     bytes += 8;
                     break;
@@ -269,9 +332,9 @@ function memorySizeOf(obj) {
                     break;
                 case 'object':
                     var objClass = Object.prototype.toString.call(obj).slice(8, -1);
-                    if(objClass === 'Object' || objClass === 'Array') {
-                        for(var key in obj) {
-                            if(!obj.hasOwnProperty(key)) continue;
+                    if (objClass === 'Object' || objClass === 'Array') {
+                        for (var key in obj) {
+                            if (!obj.hasOwnProperty(key)) continue;
                             sizeOf(obj[key]);
                         }
                     } else bytes += obj.toString().length * 2;
@@ -282,18 +345,16 @@ function memorySizeOf(obj) {
     }
 
     function formatByteSize(bytes) {
-        if(bytes < 1024) return bytes + " bytes";
-        else if(bytes < 1048576) return(bytes / 1024).toFixed(3) + " KiB";
-        else if(bytes < 1073741824) return(bytes / 1048576).toFixed(3) + " MiB";
-        else return(bytes / 1073741824).toFixed(3) + " GiB";
+        if (bytes < 1024) return bytes + " bytes";
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(3) + " KiB";
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(3) + " MiB";
+        else return (bytes / 1073741824).toFixed(3) + " GiB";
     }
 
     return formatByteSize(sizeOf(obj));
 }
 
 window.onload = function () {
-    elements.init();
-
     let connected = false;
 
     socket.on("connect", function () {
@@ -340,10 +401,6 @@ window.onload = function () {
         //elements.update(data);
     });
 
-    socket.on("window", function (data) {
-        console.log("window", data);
-    });
-
     socket.on("devices", function (data) {
         console.log("devices", data);
     });
@@ -366,7 +423,19 @@ window.onload = function () {
                 elements.update(elementIds[i], data.e[elementIds[i]]);
             }
         }
+
+        if (data.w) {
+            elements.init(data.w);
+        }
+
+        if (data.t) {
+            elements.updateToolbar(data.t);
+        }
     });
 
-    socket.emit("update.window", {width: window.innerWidth, height: window.innerHeight});
+    resize();
+};
+
+window.onresize = function () {
+    resize();
 };
