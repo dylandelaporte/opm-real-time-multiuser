@@ -93,6 +93,8 @@ function sendAtConnection() {
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
     if (project.mode === project.MODES.EDITION) {
+        packet.set(packet.KEYS.WINDOW, devices.frame);
+        packet.set(packet.KEYS.TOOLBAR, project.toolbar);
         packet.set(packet.KEYS.ELEMENT, elements.list);
     }
 
@@ -119,7 +121,14 @@ function sendWindow() {
 io.on("connection", client => {
     console.log("connection");
 
-    sendAtConnection();
+    client.on("first.contact", data => {
+        if (Number.isInteger(data.width) && Number.isInteger(data.height)) {
+            devices.setWindowSize(data);
+            project.setToolbar(data);
+
+            sendAtConnection();
+        }
+    });
 
     client.on("send.general", () => {
         sendGeneral();

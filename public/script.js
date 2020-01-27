@@ -3,6 +3,10 @@ const socket = io('http://172.16.53.116:3000');
 const mouses = {
     list: {},
     color: ["#D2691E", "#4C99FF"],
+    gap: {
+        x: 0,
+        y: 0
+    },
     get: function (id) {
         if (!mouses.list[id]) {
             mouses.add(id);
@@ -28,8 +32,8 @@ const mouses = {
         mouse.style.borderLeft = data.click.left ? "2px solid black" : "0";
         mouse.style.borderRight = data.click.right ? "2px solid black" : "0";
 
-        mouse.style.left = data.left + "px";
-        mouse.style.top = data.top + "px";
+        mouse.style.left = mouses.gap.x + data.left + "px";
+        mouse.style.top = mouses.gap.y + data.top + "px";
     }
 };
 
@@ -39,11 +43,11 @@ const elements = {
     toolbar: {},
     stage: null,
     init: function (data) {
+        console.log("init");
+
         if (elements.stage !== null) {
             elements.stage.width(data.width);
             elements.stage.height(data.height);
-
-            document.getElementById("container").marginLeft = ((window.innerWidth - data.width) / 2) + "px";
         } else {
             elements.stage = new Konva.Stage({
                 container: 'container',
@@ -65,15 +69,16 @@ const elements = {
             elements.layer = new Konva.Layer();
 
             elements.stage.add(elements.layer);
-
-            document.getElementById("container").style.marginLeft =
-                ((window.innerWidth - data.width) / 2) + "px";
         }
+
+        const xGap = ((window.innerWidth - data.width) / 2);
+
+        document.getElementById("container").style.marginLeft = xGap + "px";
+
+        mouses.gap.x = xGap;
     },
     updateToolbar: function (data) {
         const buttons = Object.keys(data);
-
-        console.log(buttons, data);
 
         for (let i = 0; i < buttons.length; i++) {
             if (elements.toolbar[buttons[i]]) {
@@ -311,8 +316,16 @@ const elements = {
     }
 };
 
+function firstContact() {
+    socket.emit("first.contact", {width: window.innerWidth, height: window.innerHeight});
+}
+
 function resize() {
     socket.emit("update.window", {width: window.innerWidth, height: window.innerHeight});
+}
+
+function addTemporaryContact() {
+    socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "none"});
 }
 
 function memorySizeOf(obj) {
@@ -361,12 +374,11 @@ window.onload = function () {
         console.log("connected");
 
         if (connected) {
-            location.reload();
+            console.log("already connected");
+            //location.reload();
         }
 
         connected = true;
-
-        socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "none"})
     });
 
     socket.on("disconnect", function () {
@@ -433,7 +445,7 @@ window.onload = function () {
         }
     });
 
-    resize();
+    firstContact();
 };
 
 window.onresize = function () {
