@@ -1,0 +1,37 @@
+body {
+    margin: 0;
+    background-color: #000000;
+}
+
+#menu a {
+    position: absolute;
+    right: -65px;
+    width: 50px;
+    z-index: 1;
+    transition: 0.5s;
+    padding: 15px;
+    border-radius: 10px 0 0 10px;
+    color: white;
+    text-decoration: none;
+}
+
+#menu a:hover {
+    right: 0;
+}
+
+#menu-button {
+    top: 5px;
+    background-color: rgba(89, 89, 89, 0.52);
+}
+
+.mouse-pointer {
+    position: absolute;
+    z-index: 1;
+    width: 10px;
+    height: 10px;
+    left: 0;
+    top: 0;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+}

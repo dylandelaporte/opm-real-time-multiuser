@@ -1,12 +1,24 @@
 const socket = io('http://172.16.53.116:3000');
 
-const mouses = {
-    list: {},
-    color: ["#D2691E", "#4C99FF"],
+const container = {
+    element: document.getElementById("container"),
     gap: {
         x: 0,
         y: 0
     },
+    setXGap: function (x) {
+        container.gap.x = x;
+        container.element.style.marginLeft = x + "px";
+    },
+    setYGap: function (y) {
+        container.gap.y = y;
+        container.element.style.marginTop = y + "px";
+    }
+};
+
+const mouses = {
+    list: {},
+    color: ["#D2691E", "#4C99FF"],
     get: function (id) {
         if (!mouses.list[id]) {
             mouses.add(id);
@@ -32,22 +44,66 @@ const mouses = {
         mouse.style.borderLeft = data.click.left ? "2px solid black" : "0";
         mouse.style.borderRight = data.click.right ? "2px solid black" : "0";
 
-        mouse.style.left = mouses.gap.x + data.left + "px";
-        mouse.style.top = mouses.gap.y + data.top + "px";
+        /*
+        mouse.x = data.left;
+        mouse.y = data.top;
+
+        const stageWidth = elements.stage.width();
+        const stageWidthGap = parseInt(container.style.marginLeft);
+        const windowWidth = window.innerWidth;
+
+        //console.log(stageWidth, stageWidthGap, windowWidth);
+
+        const gap = stageWidth - windowWidth + stageWidthGap;
+
+        console.log(stageWidthGap);
+
+        //it depends on the screen size
+        if (window.innerWidth - mouses.gap.x - data.left < 50 && gap > 0) {
+            console.log("right enter");
+
+            let margin = gap < 10  ? gap : 10;
+
+            container.style.marginLeft = (stageWidthGap - margin) + "px";
+
+            mouses.gap.x -= margin;
+        }
+        else if (data.left - mouses.gap.x < 50 && stageWidthGap < 0) {
+            console.log("left enter");
+
+            const absStageWidthGap = Math.abs(stageWidthGap);
+
+            let margin = absStageWidthGap < 10 ? absStageWidthGap : 10;
+
+            container.style.marginLeft = (stageWidthGap + margin) + "px";
+
+            mouses.gap.x -= margin;
+        }
+         */
+
+        mouse.style.left = container.gap.x + data.left + "px";
+        mouse.style.top = container.gap.y + data.top + "px";
     }
 };
 
 const elements = {
     list: {},
     layer: null,
+    toolbarLayer: null,
     toolbar: {},
     stage: null,
-    init: function (data) {
-        console.log("init");
-
+    backgroundRect: null,
+    setup: function (data) {
         if (elements.stage !== null) {
-            elements.stage.width(data.width);
-            elements.stage.height(data.height);
+            if (elements.stage.width() !== data.width || elements.stage.height() !== data.height) {
+                elements.stage.width(data.width);
+                elements.stage.height(data.height);
+
+                elements.backgroundRect.width(data.width);
+                elements.backgroundRect.height(data.height);
+
+                elements.layer.draw();
+            }
         } else {
             elements.stage = new Konva.Stage({
                 container: 'container',
@@ -55,30 +111,98 @@ const elements = {
                 height: data.height
             });
 
-            const layer = new Konva.Layer();
-            layer.add(new Konva.Rect({
+            elements.layer = new Konva.Layer();
+
+            elements.backgroundRect = new Konva.Rect({
                 x: 0,
                 y: 0,
                 width: data.width,
                 height: data.height,
                 fill: "#FFFFFF"
-            }));
+            });
 
-            elements.stage.add(layer);
-
-            elements.layer = new Konva.Layer();
+            elements.layer.add(elements.backgroundRect);
 
             elements.stage.add(elements.layer);
+
+            container.element.style.marginLeft =  "0px";
         }
 
-        const xGap = ((window.innerWidth - data.width) / 2);
+        //pixel gap
+        console.log("gap", data.scrollWidth, data.scrollHeight);
 
-        document.getElementById("container").style.marginLeft = xGap + "px";
+        let xGap = data.scrollWidth;
 
-        mouses.gap.x = xGap;
+        //console.log("xGap", xGap);
+
+        const zoneToDisplay = data.width + xGap;
+
+        //console.log("zoneToDisplay", zoneToDisplay);
+
+        if (zoneToDisplay < window.innerWidth) {
+            //console.log("yes");
+
+            const freeWindowGap = window.innerWidth - zoneToDisplay;
+            const freeZoneGap = data.width - zoneToDisplay;
+
+            //console.log("freeWindowGap", freeWindowGap);
+            //console.log("freeZoneGap", freeZoneGap);
+
+            const temporaryXGap = xGap + (freeWindowGap > freeZoneGap ? freeZoneGap : freeWindowGap);
+
+            //console.log("temporaryXGap", temporaryXGap);
+
+            if (temporaryXGap <= 0) {
+                xGap = temporaryXGap;
+            }
+        }
+
+        container.setXGap(xGap);
+
+        let yGap = data.scrollHeight;
+
+        //console.log("yGap", yGap);
+
+        const heightToDisplay = data.height + yGap;
+
+        //console.log("heightToDisplay", heightToDisplay);
+
+        if (heightToDisplay < window.innerHeight) {
+            //console.log("yes height");
+
+            const freeWindowGap = window.innerHeight - heightToDisplay;
+            const freeZoneGap = data.height - heightToDisplay;
+
+            //console.log("freeWindowGap", freeWindowGap);
+            //console.log("freeZoneGap", freeZoneGap);
+
+            const temporaryYGap = yGap + (freeWindowGap > freeZoneGap ? freeZoneGap : freeWindowGap);
+
+            //console.log("temporaryXGap", temporaryYGap);
+
+            if (temporaryYGap <= 0) {
+                yGap = temporaryYGap;
+            }
+        }
+
+        container.setYGap(yGap);
+
+        console.log("final gap", xGap, yGap);
+
+        if (elements.toolbarLayer) {
+            elements.toolbarLayer.offsetX(xGap);
+            elements.toolbarLayer.offsetY(yGap);
+
+            elements.toolbarLayer.draw();
+        }
     },
     updateToolbar: function (data) {
         const buttons = Object.keys(data);
+
+        if (!elements.toolbarLayer) {
+            elements.toolbarLayer = new Konva.Layer();
+            elements.stage.add(elements.toolbarLayer);
+        }
 
         for (let i = 0; i < buttons.length; i++) {
             if (elements.toolbar[buttons[i]]) {
@@ -114,11 +238,11 @@ const elements = {
 
                 elements.toolbar[buttons[i]] = button;
 
-                elements.layer.add(button);
+                elements.toolbarLayer.add(button);
             }
         }
 
-        elements.layer.draw();
+        elements.toolbarLayer.draw();
     },
     add: function (id, data) {
         //const layer = new Konva.Layer();
@@ -317,14 +441,10 @@ const elements = {
 };
 
 function firstContact() {
-    socket.emit("first.contact", {width: window.innerWidth, height: window.innerHeight});
+    socket.emit("first.contact");
 }
 
-function resize() {
-    socket.emit("update.window", {width: window.innerWidth, height: window.innerHeight});
-}
-
-function addTemporaryContact() {
+function addTemporaryUser() {
     socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "none"});
 }
 
@@ -428,6 +548,14 @@ window.onload = function () {
             mouses.update(data.id, data.m);
         }
 
+        if (data.w) {
+            elements.setup(data.w);
+        }
+
+        if (data.t) {
+            elements.updateToolbar(data.t);
+        }
+
         if (data.e) {
             const elementIds = Object.keys(data.e);
 
@@ -435,19 +563,7 @@ window.onload = function () {
                 elements.update(elementIds[i], data.e[elementIds[i]]);
             }
         }
-
-        if (data.w) {
-            elements.init(data.w);
-        }
-
-        if (data.t) {
-            elements.updateToolbar(data.t);
-        }
     });
 
     firstContact();
-};
-
-window.onresize = function () {
-    resize();
 };

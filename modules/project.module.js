@@ -1,4 +1,10 @@
 const project = {
+    frame: {
+        width: 500,
+        height: 500,
+        scrollWidth: 0,
+        scrollHeight: 0
+    },
     mode: 0,
     MODES: {
         EDITION: 0,

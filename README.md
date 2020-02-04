@@ -12,4 +12,4 @@ npm install
 Fix: plug/unplug devices, remove if already assigned to an user
 Master-slave or server mode
 Arrow type
-Window resize
+Keyboard

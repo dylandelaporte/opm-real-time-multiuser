@@ -16,8 +16,7 @@ devices.monitor(function (devicePath) {
                 project.deleteKeyboardUser(project.editionUser);
 
                 project.keyboardAssociations[devicePath] = project.editionUser;
-            }
-            else {
+            } else {
                 project.deleteMouseUser(project.editionUser);
 
                 project.mouseAssociations[devicePath] = project.editionUser;
@@ -31,8 +30,7 @@ devices.monitor(function (devicePath) {
         packet.set(packet.KEYS.DEVICE, devicePath);
 
         packet.send();
-    }
-    else {
+    } else {
         let mouseUserId = project.mouseAssociations[devicePath];
         let keyboardUserId = project.keyboardAssociations[devicePath];
 
@@ -93,7 +91,7 @@ function sendAtConnection() {
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
     if (project.mode === project.MODES.EDITION) {
-        packet.set(packet.KEYS.WINDOW, devices.frame);
+        packet.set(packet.KEYS.WINDOW, project.frame);
         packet.set(packet.KEYS.TOOLBAR, project.toolbar);
         packet.set(packet.KEYS.ELEMENT, elements.list);
     }
@@ -121,13 +119,8 @@ function sendWindow() {
 io.on("connection", client => {
     console.log("connection");
 
-    client.on("first.contact", data => {
-        if (Number.isInteger(data.width) && Number.isInteger(data.height)) {
-            devices.setWindowSize(data);
-            project.setToolbar(data);
-
-            sendAtConnection();
-        }
+    client.on("first.contact", () => {
+        sendAtConnection();
     });
 
     client.on("send.general", () => {
@@ -138,8 +131,7 @@ io.on("connection", client => {
         console.log(data);
         if (data.mode === project.MODES.SETTING) {
             project.mode = project.MODES.SETTING;
-        }
-        else {
+        } else {
             project.mode = project.MODES.EDITION;
         }
 
@@ -177,18 +169,6 @@ io.on("connection", client => {
         sendGeneral();
     });
 
-    //view
-    client.on("update.window", data => {
-        console.log("window", data);
-
-        if (Number.isInteger(data.width) && Number.isInteger(data.height)) {
-            devices.setWindowSize(data);
-            project.setToolbar(data);
-
-            sendWindow();
-        }
-    });
-
     client.on("disconnect", () => {
         console.log("disconnect");
     });
@@ -222,6 +202,73 @@ function finishSelectAction(user) {
 function executeMouseAction(devicePath, userId) {
     const device = devices.list[devicePath];
     const user = project.users[userId];
+
+    //scroll
+    if (device.properties.wheel > 0) {
+        if (device.properties.click.wheel) {
+            const endHeight = project.frame.height - 700;
+
+            if (device.properties.wheel > 1) {
+                project.frame.scrollHeight -= 25;
+
+                if (project.frame.scrollHeight < -endHeight) {
+                    project.frame.scrollHeight = -endHeight;
+                }
+            }
+            else {
+                project.frame.scrollHeight += 25;
+
+                if (project.frame.scrollHeight > 0) {
+                    project.frame.scrollHeight = 0;
+                }
+            }
+        }
+        else {
+            const endWidth = project.frame.width - 700;
+
+            if (device.properties.wheel > 1) {
+                project.frame.scrollWidth -= 25;
+
+                if (project.frame.scrollWidth < -endWidth) {
+                    project.frame.scrollWidth = -endWidth;
+                }
+            }
+            else {
+                project.frame.scrollWidth += 25;
+
+                if (project.frame.scrollWidth > 0) {
+                    project.frame.scrollWidth = 0;
+                }
+            }
+        }
+
+        packet.set(packet.KEYS.WINDOW, project.frame);
+    }
+
+    //window
+    let updateWindow = false;
+
+    if (project.frame.width - device.properties.left < 20) {
+        console.log("larger from right");
+
+        project.frame.width += 100;
+
+        updateWindow = true;
+    }
+
+    if (project.frame.height - device.properties.top < 20) {
+        console.log("larger from bottom");
+
+        project.frame.height += 100;
+
+        updateWindow = true;
+    }
+
+    if (updateWindow) {
+        devices.setWindowSize(project.frame);
+
+        packet.set(packet.KEYS.WINDOW, project.frame);
+    }
 
     //tools bar
     const buttonToolbar = project.isWithinToolbar(device.properties);
@@ -297,8 +344,7 @@ function executeMouseAction(devicePath, userId) {
                     console.log("perpendicular angle");
 
                     elements.list[user.action.elements[0]].positions = oldPositions;
-                }
-                else {
+                } else {
                     packet.set(packet.KEYS.ELEMENT, {positions: positions}, user.action.elements[0]);
                 }
             }
@@ -413,6 +459,40 @@ function executeMouseAction(devicePath, userId) {
 
                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
                 packet.set(packet.KEYS.ELEMENT, {selected: userId}, user.action.elements[0]);
+
+                const element = elements.list[user.action.elements[0]];
+
+                let updateWindow = false;
+
+                if (element.x < 20) {
+                    console.log("larger from left");
+                }
+
+                if (project.frame.width - (element.x + element.width) < 20) {
+                    console.log("larger from right");
+
+                    project.frame.width += 100;
+
+                    updateWindow = true;
+                }
+
+                if (element.y < 20) {
+                    console.log("larger from top");
+                }
+
+                if (project.frame.height - (element.y + element.height) < 20) {
+                    console.log("larger from bottom");
+
+                    project.frame.height += 100;
+
+                    updateWindow = true;
+                }
+
+                if (updateWindow) {
+                    devices.setWindowSize(project.frame);
+
+                    packet.set(packet.KEYS.WINDOW, project.frame);
+                }
             }
         }
 

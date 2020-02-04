@@ -100,7 +100,8 @@ devices.refresh = function () {
                                 wheel: false
                             },
                             left: 0,
-                            top: 0
+                            top: 0,
+                            wheel: 0
                         }
                     };
 
@@ -142,16 +143,24 @@ devices.refresh = function () {
 devices.mouseUpdate = function (path, data) {
     let properties = devices.list[path].properties;
 
+    if (data[1] > 100) {
+        properties.left -= 256 - data[1];
+    } else if (data[1] > 0) {
+        properties.left += data[1];
+    }
+
     if (data[2] > 100) {
         properties.top -= 256 - data[2];
     } else if (data[2] > 0) {
         properties.top += data[2];
     }
 
-    if (data[1] > 100) {
-        properties.left -= 256 - data[1];
-    } else if (data[1] > 0) {
-        properties.left += data[1];
+    if (data[3] > 100) {
+        properties.wheel = 2;
+    } else if (data[3] > 0) {
+        properties.wheel = 1;
+    } else {
+        properties.wheel = 0;
     }
 
     if (properties.left < 0) {
