@@ -56,15 +56,18 @@ project.setToolbar = function (frame) {
 };
 
 project.isWithinToolbar = function (deviceProperties) {
-    if (deviceProperties.top >= project.toolbarDimensions.y
-        && deviceProperties.top <= project.toolbarDimensions.height
-        && deviceProperties.left >= project.toolbarDimensions.x
-        && deviceProperties.left <= project.toolbarDimensions.width) {
+    const topOffset = deviceProperties.top /*+ project.frame.scrollHeight*/;
+    const leftOffset = deviceProperties.left /*+ project.frame.scrollWidth*/;
+
+    if (topOffset >= project.toolbarDimensions.y
+        && topOffset <= project.toolbarDimensions.height
+        && leftOffset >= project.toolbarDimensions.x
+        && leftOffset <= project.toolbarDimensions.width) {
         const buttons = Object.keys(project.toolbar);
 
         for (let i = 0; i < buttons.length; i++) {
-            if (deviceProperties.left >= project.toolbar[buttons[i]].x
-                && deviceProperties.left <= project.toolbar[buttons[i]].x + project.toolbar[buttons[i]].width) {
+            if (leftOffset >= project.toolbar[buttons[i]].x
+                && leftOffset <= project.toolbar[buttons[i]].x + project.toolbar[buttons[i]].width) {
                 return buttons[i];
             }
         }

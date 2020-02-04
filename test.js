@@ -107,15 +107,6 @@ function sendGeneral() {
     packet.send();
 }
 
-function sendWindow() {
-    packet.clear();
-
-    packet.set(packet.KEYS.WINDOW, devices.frame);
-    packet.set(packet.KEYS.TOOLBAR, project.toolbar);
-
-    packet.send();
-}
-
 io.on("connection", client => {
     console.log("connection");
 

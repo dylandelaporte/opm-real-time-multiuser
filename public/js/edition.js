@@ -1,4 +1,6 @@
-const socket = io('http://172.16.53.116:3000');
+const server_url_cookie = "server_url";
+
+let socket = null;
 
 const container = {
     element: document.getElementById("container"),
@@ -29,8 +31,8 @@ const mouses = {
     add: function (id) {
         const mouseDiv = document.createElement("div");
 
-        mouseDiv.classList.add("mouse-pointer");
-        mouseDiv.style.backgroundColor = mouses.color[Object.keys(mouses.list).length];
+        mouseDiv.classList.add("mouse-pointer", "fas", "fa-dot-circle");
+        mouseDiv.style.color = mouses.color[Object.keys(mouses.list).length];
 
         mouseDiv.id = "pointer-" + id;
 
@@ -41,8 +43,18 @@ const mouses = {
     update: function (id, data) {
         const mouse = mouses.list[id];
 
-        mouse.style.borderLeft = data.click.left ? "2px solid black" : "0";
-        mouse.style.borderRight = data.click.right ? "2px solid black" : "0";
+        var regx = new RegExp('\\b' + "fa-" + '(.*)?\\b', 'g');
+        mouse.className = mouse.className.replace(regx, '');
+
+        if (data.click.left) {
+            mouse.classList.add("fa-arrows-alt");
+        }
+        else if (data.click.right) {
+            mouse.classList.add("fa-trash");
+        }
+        else {
+            mouse.classList.add("fa-dot-circle");
+        }
 
         /*
         mouse.x = data.left;
@@ -189,12 +201,7 @@ const elements = {
 
         console.log("final gap", xGap, yGap);
 
-        if (elements.toolbarLayer) {
-            elements.toolbarLayer.offsetX(xGap);
-            elements.toolbarLayer.offsetY(yGap);
-
-            elements.toolbarLayer.draw();
-        }
+        //elements.updateToolbarOffset();
     },
     updateToolbar: function (data) {
         const buttons = Object.keys(data);
@@ -243,6 +250,16 @@ const elements = {
         }
 
         elements.toolbarLayer.draw();
+
+        //elements.updateToolbarOffset();
+    },
+    updateToolbarOffset: function () {
+        if (elements.toolbarLayer) {
+            elements.toolbarLayer.offsetX(container.gap.x);
+            elements.toolbarLayer.offsetY(container.gap.y);
+
+            elements.toolbarLayer.draw();
+        }
     },
     add: function (id, data) {
         //const layer = new Konva.Layer();
@@ -380,12 +397,12 @@ const elements = {
     selection: function (id) {
         if (elements.list[id].selected !== null) {
             elements.list[id].mainElement.strokeWidth(5);
-            elements.list[id].mainElement.stroke(mouses.get(elements.list[id].selected).style.backgroundColor);
+            elements.list[id].mainElement.stroke(mouses.get(elements.list[id].selected).style.color);
         } else {
             elements.list[id].mainElement.strokeWidth(3);
 
             if (elements.list[id].hover !== null) {
-                elements.list[id].mainElement.stroke(mouses.get(elements.list[id].hover).style.backgroundColor);
+                elements.list[id].mainElement.stroke(mouses.get(elements.list[id].hover).style.color);
             } else {
                 switch (elements.list[id].type) {
                     case "object":
@@ -440,6 +457,57 @@ const elements = {
     }
 };
 
+function connect(server_url) {
+    socket = io.connect(server_url);
+
+    let connected = false;
+
+    socket.on("connect", function () {
+        console.log("connected");
+
+        if (connected) {
+            //console.log("already connected");
+            location.reload();
+        }
+
+        connected = true;
+
+        firstContact();
+    });
+
+    socket.on("disconnect", function () {
+        console.log("disconnected");
+    });
+
+    socket.on("data", function (data) {
+        console.log("data", data);
+
+        if (data.m) {
+            if (!mouses.list[data.id]) {
+                mouses.add(data.id);
+            }
+
+            mouses.update(data.id, data.m);
+        }
+
+        if (data.w) {
+            elements.setup(data.w);
+        }
+
+        if (data.t) {
+            elements.updateToolbar(data.t);
+        }
+
+        if (data.e) {
+            const elementIds = Object.keys(data.e);
+
+            for (let i = 0; i < elementIds.length; i++) {
+                elements.update(elementIds[i], data.e[elementIds[i]]);
+            }
+        }
+    });
+}
+
 function firstContact() {
     socket.emit("first.contact");
 }
@@ -488,82 +556,12 @@ function memorySizeOf(obj) {
 }
 
 window.onload = function () {
-    let connected = false;
+    const server_url = getCookie(server_url_cookie);
 
-    socket.on("connect", function () {
-        console.log("connected");
-
-        if (connected) {
-            console.log("already connected");
-            //location.reload();
-        }
-
-        connected = true;
-    });
-
-    socket.on("disconnect", function () {
-        console.log("disconnected");
-    });
-
-    socket.on("mouse", function (data) {
-        console.log("mouse");
-
-        /*
-        if (!mouses.list[data.id]) {
-            mouses.add(data.id);
-        }
-
-        mouses.update(data);
-         */
-    });
-
-    socket.on("user", function (data) {
-        console.log("user");
-
-        //console.log("user", data);
-    });
-
-    //shape with text zone, arrow
-    socket.on("element", function (data) {
-        console.log("element");
-
-        //console.log("element", data);
-        //console.log(data, memorySizeOf(data));
-
-        //elements.update(data);
-    });
-
-    socket.on("devices", function (data) {
-        console.log("devices", data);
-    });
-
-    socket.on("data", function (data) {
-        console.log("data", data);
-
-        if (data.m) {
-            if (!mouses.list[data.id]) {
-                mouses.add(data.id);
-            }
-
-            mouses.update(data.id, data.m);
-        }
-
-        if (data.w) {
-            elements.setup(data.w);
-        }
-
-        if (data.t) {
-            elements.updateToolbar(data.t);
-        }
-
-        if (data.e) {
-            const elementIds = Object.keys(data.e);
-
-            for (let i = 0; i < elementIds.length; i++) {
-                elements.update(elementIds[i], data.e[elementIds[i]]);
-            }
-        }
-    });
-
-    firstContact();
+    if (server_url !== "") {
+        connect(server_url);
+    }
+    else {
+        console.log("unable to connect to the server");
+    }
 };
