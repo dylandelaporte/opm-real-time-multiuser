@@ -231,6 +231,7 @@ project.newProject = async function (name, elements) {
     project.autosave = true;
 
     elements.list = {};
+    elements.nextId = 0;
 };
 
 project.loadProject = async function (name, elements) {
@@ -267,6 +268,22 @@ project.loadProject = async function (name, elements) {
                         project.autosave = !!content.autosave;
 
                         elements.list = content.elements;
+
+                        const elementKeys = Object.keys(elements.list);
+
+                        let nextId = 0;
+
+                        for (let i = 0; i < elementKeys.length; i++) {
+                            const elementId = parseInt(elementKeys[i]);
+
+                            if (elementId > nextId) {
+                                nextId = elementId;
+                            }
+                        }
+
+                        elements.nextId = nextId + 1;
+
+                        console.log("nextId", elements.nextId);
 
                         resolve();
                     }
