@@ -258,6 +258,10 @@ project.loadProject = async function (name, elements) {
                         && content.elements) {
                         project.frame = content.frame;
                         project.users = content.users;
+
+                        project.mouseAssociations = {};
+                        project.keyboardAssociations = {};
+
                         project.currentName = content.currentName;
 
                         project.autosave = !!content.autosave;
