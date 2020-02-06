@@ -5,23 +5,22 @@ body {
 
 #menu a {
     position: absolute;
-    right: -100px;
-    width: 100px;
+    right: 0;
+    width: 35px;
     z-index: 1;
-    transition: 0.5s;
     padding: 15px;
     border-radius: 10px 0 0 10px;
     color: white;
     text-decoration: none;
 }
 
-#menu a:hover {
-    right: 0;
-}
-
 #menu-button {
     top: 5px;
     background-color: rgba(89, 89, 89, 0.52);
+}
+
+#alert-mode > div {
+    margin-top: 50px;
 }
 
 .mouse-pointer {

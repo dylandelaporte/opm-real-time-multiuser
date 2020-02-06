@@ -51,6 +51,16 @@ devices.monitor(function (devicePath) {
     }
 });
 
+//autosave
+function autosave() {
+    project.executeAutosave(elements);
+
+    setTimeout(autosave, 30000);
+}
+
+autosave();
+
+//packet
 let packet = {
     KEYS: {
         GENERAL: "g",
@@ -59,7 +69,10 @@ let packet = {
         ACTION: "a",
         DEVICE: "d",
         WINDOW: "w",
-        TOOLBAR: "t"
+        TOOLBAR: "t",
+        PROJECT: "p",
+        SUCCESS: "s",
+        ERROR: "er"
     },
     clear: function (id) {
         if (id) {
@@ -130,8 +143,87 @@ io.on("connection", client => {
     });
 
     //settings
+
+    /*
     client.on("get.availabledevices", () => {
         devices.getAvailableDevices(io, project.mouseAssociations, project.keyboardAssociations);
+    });
+     */
+
+    client.on("list.project", async () => {
+        packet.clear();
+
+        try {
+            const projects = await project.listProjects();
+
+            packet.set(packet.KEYS.PROJECT, projects);
+        } catch (e) {
+            console.error(e);
+
+            packet.set(packet.KEYS.ERROR, e);
+        }
+
+        packet.send();
+    });
+
+    client.on("new.project", async data => {
+        packet.clear();
+
+        try {
+            await project.newProject(data.name, elements);
+
+            packet.set(packet.KEYS.SUCCESS, "New project created!");
+            packet.set(packet.KEYS.GENERAL, project.getGeneral());
+        } catch (e) {
+            console.error(e);
+
+            packet.set(packet.KEYS.ERROR, e);
+        }
+
+        packet.send();
+    });
+
+    client.on("load.project", async data => {
+        packet.clear();
+
+        try {
+            await project.loadProject(data.name, elements);
+
+            packet.set(packet.KEYS.SUCCESS, "Project loaded!");
+            packet.set(packet.KEYS.GENERAL, project.getGeneral());
+        } catch (e) {
+            console.error(e);
+
+            packet.set(packet.KEYS.ERROR, e);
+        }
+
+        packet.send();
+    });
+
+    client.on("save.project", async data => {
+        packet.clear();
+
+        try {
+            await project.saveProject(data.name, elements);
+
+            packet.set(packet.KEYS.SUCCESS, "Project saved!");
+
+            const projects = await project.listProjects();
+
+            packet.set(packet.KEYS.PROJECT, projects);
+        } catch (e) {
+            console.error(e);
+
+            packet.set(packet.KEYS.ERROR, e);
+        }
+
+        packet.send();
+    });
+
+    client.on("autosave.project", data => {
+        project.autosave = !!data.autosave;
+
+        sendGeneral();
     });
 
     client.on("add.user", data => {
@@ -148,7 +240,7 @@ io.on("connection", client => {
         sendGeneral();
     });
 
-    client.on("set.edition.user", (data) => {
+    client.on("set.edition.user", data => {
         console.log("set.edition.user", data);
 
         project.editionUser = data.id;
@@ -433,6 +525,49 @@ function executeMouseAction(devicePath, userId) {
                     }
                 }
             }
+        } else if (device.properties.click.right) {
+            if (collisionElement !== null) {
+                if (collisionElement.node) {
+                    console.log("delete node");
+
+                    user.action.type = project.action.type.DELETE_NODE_LINK;
+
+                    user.action.status = project.action.status.IN;
+
+                    elements.list[collisionElement.id].positions.splice(collisionElement.node * 2, 2);
+
+                    const positions = elements.updateArrow(collisionElement.id);
+
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                    packet.set(packet.KEYS.ELEMENT, {positions: positions}, collisionElement.id);
+                }
+                else if (user.action.status === project.action.status.OUT) {
+                    console.log("delete element");
+
+                    console.log("collisionElement", collisionElement);
+
+                    user.action.type = project.action.type.DELETE_ELEMENT;
+
+                    const element = elements.list[collisionElement.id];
+
+                    for (let i = 0; i < element.beginArrows.length; i++) {
+                        delete elements.list[element.beginArrows[i]];
+
+                        packet.set(packet.KEYS.ELEMENT, {deleted: true}, element.beginArrows[i]);
+                    }
+
+                    for (let i = 0; i < element.endArrows.length; i++) {
+                        delete elements.list[element.endArrows[i]];
+
+                        packet.set(packet.KEYS.ELEMENT, {deleted: true}, element.endArrows[i]);
+                    }
+
+                    delete elements.list[collisionElement.id];
+
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                    packet.set(packet.KEYS.ELEMENT, {deleted: true}, collisionElement.id);
+                }
+            }
         } else {
             if ((user.action.type === project.action.type.MOVE
                 || user.action.type === project.action.type.MOVE_NODE_LINK
@@ -487,79 +622,35 @@ function executeMouseAction(devicePath, userId) {
             }
         }
 
-        if (device.properties.click.right) {
-            if (collisionElement !== null) {
-                if (collisionElement.node) {
-                    console.log("delete node");
-
-                    user.action.type = project.action.type.DELETE_NODE_LINK;
-
-                    user.action.status = project.action.status.IN;
-
-                    elements.list[collisionElement.id].positions.splice(collisionElement.node * 2, 2);
-
-                    const positions = elements.updateArrow(collisionElement.id);
-
-                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
-                    packet.set(packet.KEYS.ELEMENT, {positions: positions}, collisionElement.id);
-                }
-            }
-        }
-
         if (collisionElement !== null) {
-            console.log(collisionElement);
-
-            //if (user.action.status === project.action.status.OUT) {
-            //console.log("hover");
-
-            //user.action.type = project.action.type.HOVER;
-
             if (user.action.hover === null) {
-                //console.log("new hover");
-
                 elements.list[collisionElement.id].hover = userId;
                 user.action.hover = collisionElement.id;
-
-                //project.userOutput(io, userId);
 
                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
-
-                //elements.output(io, user.action.hover);
-
                 packet.set(packet.KEYS.ELEMENT, {hover: userId}, user.action.hover);
             } else if (user.action.hover !== collisionElement.id) {
-                //console.log("change hover");
-
                 elements.list[user.action.hover].hover = null;
-
-                //elements.output(io, user.action.hover);
 
                 packet.set(packet.KEYS.ELEMENT, {hover: null}, user.action.hover);
 
                 elements.list[collisionElement.id].hover = userId;
                 user.action.hover = collisionElement.id;
 
-                //elements.output(io, user.action.hover);
-
                 packet.set(packet.KEYS.ELEMENT, {hover: userId}, user.action.hover);
             }
-            //}
         } else {
             if (user.action.hover !== null) {
-                //console.log("stop hover");
+                if (elements.list[user.action.hover]) {
+                    elements.list[user.action.hover].hover = null;
 
-                elements.list[user.action.hover].hover = null;
-
-                //elements.output(io, user.action.hover);
-
-                packet.set(packet.KEYS.ELEMENT, {hover: null}, user.action.hover);
+                    packet.set(packet.KEYS.ELEMENT, {hover: null}, user.action.hover);
+                }
 
                 user.action.hover = null;
             }
         }
     }
-
-    //devices.mouseOutput(io, userId, devicePath);
 }
 
 function executeKeyboardAction(devicePath, userId) {

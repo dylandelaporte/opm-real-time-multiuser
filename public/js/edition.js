@@ -342,51 +342,66 @@ const elements = {
     },
     update: function (id, data) {
         if (elements.list[id]) {
-            if (elements.list[id].type.indexOf("arrow") >= 0) {
-                if (data.positions) {
-                    elements.list[id].mainElement.points(data.positions);
+            if (data.deleted) {
+                elements.list[id].mainElement.destroy();
 
-                    elements.updateNodes(id, data);
-                }
-            } else {
-                if (data.text) {
-                    elements.list[id].textElement.text(data.text);
-                }
-
-                if (data.width) {
-                    elements.list[id].textElement.width(data.width);
-
-                    elements.list[id].mainElement.width(data.width);
-                }
-
-                if (data.height) {
-                    elements.list[id].mainElement.height(data.height);
-                }
-
-                if (data.x && data.y) {
-                    elements.list[id].textElement.x(data.x);
-                    elements.list[id].textElement.y(data.y + 22);
-
-                    if (elements.list[id].type === "object") {
-                        elements.list[id].mainElement.x(data.x);
-                        elements.list[id].mainElement.y(data.y);
-                    } else {
-                        elements.list[id].mainElement.x(data.x + elements.list[id].mainElement.width() / 2);
-                        elements.list[id].mainElement.y(data.y + elements.list[id].mainElement.height() / 2);
+                if (elements.list[id].type.indexOf("arrow") >= 0) {
+                    for (let i = 0; i < elements.list[id].nodeElements.length; i++) {
+                        elements.list[id].nodeElements[i].destroy();
                     }
                 }
-            }
+                else {
+                    elements.list[id].textElement.destroy();
+                }
 
-            if (data.selected !== undefined) {
-                elements.list[id].selected = data.selected;
+                delete elements.list[id];
+            } else {
+                if (elements.list[id].type.indexOf("arrow") >= 0) {
+                    if (data.positions) {
+                        elements.list[id].mainElement.points(data.positions);
 
-                elements.selection(id);
-            }
+                        elements.updateNodes(id, data);
+                    }
+                } else {
+                    if (data.text) {
+                        elements.list[id].textElement.text(data.text);
+                    }
 
-            if (data.hover !== undefined) {
-                elements.list[id].hover = data.hover;
+                    if (data.width) {
+                        elements.list[id].textElement.width(data.width);
 
-                elements.selection(id);
+                        elements.list[id].mainElement.width(data.width);
+                    }
+
+                    if (data.height) {
+                        elements.list[id].mainElement.height(data.height);
+                    }
+
+                    if (data.x && data.y) {
+                        elements.list[id].textElement.x(data.x);
+                        elements.list[id].textElement.y(data.y + 22);
+
+                        if (elements.list[id].type === "object") {
+                            elements.list[id].mainElement.x(data.x);
+                            elements.list[id].mainElement.y(data.y);
+                        } else {
+                            elements.list[id].mainElement.x(data.x + elements.list[id].mainElement.width() / 2);
+                            elements.list[id].mainElement.y(data.y + elements.list[id].mainElement.height() / 2);
+                        }
+                    }
+                }
+
+                if (data.selected !== undefined) {
+                    elements.list[id].selected = data.selected;
+
+                    elements.selection(id);
+                }
+
+                if (data.hover !== undefined) {
+                    elements.list[id].hover = data.hover;
+
+                    elements.selection(id);
+                }
             }
 
             elements.layer.draw();
@@ -461,6 +476,7 @@ function connect(server_url) {
     socket = io.connect(server_url);
 
     let connected = false;
+    let currentMode = 0;
 
     socket.on("connect", function () {
         console.log("connected");
@@ -481,6 +497,21 @@ function connect(server_url) {
 
     socket.on("data", function (data) {
         console.log("data", data);
+
+        if (data.g) {
+            if (data.g.mode === 0) {
+                if (currentMode === 1) {
+                    location.reload();
+                }
+            }
+            else {
+                container.element.style.display = "none";
+
+                document.getElementById("alert-mode").style.display = "";
+            }
+
+            currentMode = 1;
+        }
 
         if (data.m) {
             if (!mouses.list[data.id]) {

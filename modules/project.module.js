@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const project = {
     frame: {
         width: 500,
@@ -21,6 +23,7 @@ const project = {
             SELECT: "select",
             NEW_OBJECT: "new_object",
             NEW_PROCESS: "new_process",
+            DELETE_ELEMENT: "delete_element",
             NEW_LINK: "new_link",
             NEW_NODE_LINK: "new_node_link",
             MOVE_NODE_LINK: "move_node_link",
@@ -42,7 +45,10 @@ const project = {
         y: 5,
         width: 315,
         height: 30
-    }
+    },
+    currentName: "",
+    autosave: true,
+    path: "../projects/"
 };
 
 project.setToolbar = function (frame) {
@@ -173,8 +179,145 @@ project.getGeneral = function () {
         mode: project.mode,
         users: users,
         mouseAssociations: project.mouseAssociations,
-        keyboardAssociations: project.keyboardAssociations
+        keyboardAssociations: project.keyboardAssociations,
+        currentName: project.currentName,
+        autosave: project.autosave
     };
+};
+
+project.listProjects = async function () {
+    return new Promise(function (resolve, reject) {
+        fs.readdir(__dirname + "/" + project.path, function (err, files) {
+            if (err) {
+                return reject("Unable to scan directory: " + err);
+            }
+
+            let projects = [];
+
+            files.forEach(function (file) {
+                const fileSplit = file.split(".");
+
+                if (fileSplit.length > 1 && fileSplit[fileSplit.length - 1] === "json") {
+                    projects.push(fileSplit[0]);
+                }
+            });
+
+            resolve(projects);
+        });
+    });
+};
+
+project.validName = function (name) {
+    const regex = new RegExp(/^[a-zA-Z0-9]+$/g);
+
+    return name !== undefined && regex.test(name);
+};
+
+project.newProject = async function (name, elements) {
+    if (!project.validName(name)) {
+        return Promise.reject("The project name is not valid, please update it.");
+    }
+
+    project.frame.width = 500;
+    project.frame.height = 500;
+    project.frame.scrollWidth = 0;
+    project.frame.scrollHeight = 0;
+
+    project.users = {};
+    project.mouseAssociations = {};
+    project.keyboardAssociations = {};
+
+    project.currentName = name;
+    project.autosave = true;
+
+    elements.list = {};
+};
+
+project.loadProject = async function (name, elements) {
+    return new Promise(function (resolve, reject) {
+        if (!project.validName(name)) {
+            return reject("The project name is not valid, please update it.");
+        }
+
+        const projectFilePath = __dirname + "/" + project.path + name + ".json";
+
+        if (fs.existsSync(projectFilePath)) {
+            fs.readFile(projectFilePath, "utf8", function (err, data) {
+                if (err) {
+                    return reject(err);
+                }
+
+                try {
+                    const content = JSON.parse(data);
+
+                    console.log("content", content);
+
+                    if (content.frame
+                        && content.users
+                        && content.currentName
+                        && content.elements) {
+                        project.frame = content.frame;
+                        project.users = content.users;
+                        project.currentName = content.currentName;
+
+                        project.autosave = !!content.autosave;
+
+                        elements.list = content.elements;
+
+                        resolve();
+                    }
+                    else {
+                        throw new Error();
+                    }
+                } catch (e) {
+                    reject("Unable to read the project file");
+                }
+            });
+        }
+        else {
+            reject("The project does not exists.");
+        }
+    });
+};
+
+project.saveProject = async function (name, elements) {
+    return new Promise(function (resolve, reject) {
+        if (!project.validName(name)) {
+            return reject("The project name is not valid, please update it.");
+        }
+
+        project.currentName = name;
+
+        const content = {
+            frame: project.frame,
+            users: project.users,
+            currentName: project.currentName,
+            autosave: project.autosave,
+            elements: elements.list
+        };
+
+        const stringContent = JSON.stringify(content);
+
+        fs.writeFile(__dirname + "/" + project.path + name + ".json", stringContent, "utf8", function (err) {
+            if (err) {
+                return reject("Unable to write file: " + err);
+            }
+
+            resolve();
+        })
+    });
+};
+
+project.executeAutosave = async function (elements) {
+    console.log("autosave", project.autosave);
+
+    if (project.autosave && project.validName(project.currentName)) {
+        try {
+            await project.saveProject(project.currentName, elements);
+        } catch (e) {
+            console.error(e);
+        }
+    }
 };
 
 module.exports = project;
