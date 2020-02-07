@@ -297,16 +297,14 @@ function executeMouseAction(devicePath, userId) {
                 if (project.frame.scrollHeight < -endHeight) {
                     project.frame.scrollHeight = -endHeight;
                 }
-            }
-            else {
+            } else {
                 project.frame.scrollHeight += 25;
 
                 if (project.frame.scrollHeight > 0) {
                     project.frame.scrollHeight = 0;
                 }
             }
-        }
-        else {
+        } else {
             const endWidth = project.frame.width - 700;
 
             if (device.properties.wheel > 1) {
@@ -315,8 +313,7 @@ function executeMouseAction(devicePath, userId) {
                 if (project.frame.scrollWidth < -endWidth) {
                     project.frame.scrollWidth = -endWidth;
                 }
-            }
-            else {
+            } else {
                 project.frame.scrollWidth += 25;
 
                 if (project.frame.scrollWidth > 0) {
@@ -540,8 +537,7 @@ function executeMouseAction(devicePath, userId) {
 
                     packet.set(packet.KEYS.ACTION, project.users[userId].action);
                     packet.set(packet.KEYS.ELEMENT, {positions: positions}, collisionElement.id);
-                }
-                else if (user.action.status === project.action.status.OUT) {
+                } else if (user.action.status === project.action.status.OUT) {
                     console.log("delete element");
 
                     console.log("collisionElement", collisionElement);
@@ -550,16 +546,40 @@ function executeMouseAction(devicePath, userId) {
 
                     const element = elements.list[collisionElement.id];
 
-                    for (let i = 0; i < element.beginArrows.length; i++) {
-                        delete elements.list[element.beginArrows[i]];
+                    if (element.type.indexOf("arrow") >= 0) {
+                        console.log("arrow element");
 
-                        packet.set(packet.KEYS.ELEMENT, {deleted: true}, element.beginArrows[i]);
+                        let arrowsBeginElement = elements.list[elements.list[collisionElement.id].beginElement].beginArrows;
+                        arrowsBeginElement.splice(arrowsBeginElement.indexOf(collisionElement.id), 1);
+
+                        let arrowsEndElement =
+                            elements.list[elements.list[collisionElement.id].endElement].endArrows;
+                        arrowsEndElement.splice(arrowsEndElement.indexOf(collisionElement.id), 1);
                     }
+                    else {
+                        console.log("object or process element");
 
-                    for (let i = 0; i < element.endArrows.length; i++) {
-                        delete elements.list[element.endArrows[i]];
+                        for (let i = 0; i < element.beginArrows.length; i++) {
+                            const arrowId = element.beginArrows[i];
 
-                        packet.set(packet.KEYS.ELEMENT, {deleted: true}, element.endArrows[i]);
+                            let oppositeArrowsElement = elements.list[elements.list[arrowId].endElement].endArrows;
+                            oppositeArrowsElement.splice(oppositeArrowsElement.indexOf(arrowId), 1);
+
+                            delete elements.list[arrowId];
+
+                            packet.set(packet.KEYS.ELEMENT, {deleted: true}, arrowId);
+                        }
+
+                        for (let i = 0; i < element.endArrows.length; i++) {
+                            const arrowId = element.endArrows[i];
+
+                            let oppositeArrowsElement = elements.list[elements.list[arrowId].beginElement].beginArrows;
+                            oppositeArrowsElement.splice(oppositeArrowsElement.indexOf(arrowId), 1);
+
+                            delete elements.list[arrowId];
+
+                            packet.set(packet.KEYS.ELEMENT, {deleted: true}, arrowId);
+                        }
                     }
 
                     delete elements.list[collisionElement.id];
