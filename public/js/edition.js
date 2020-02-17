@@ -363,21 +363,21 @@ const elements = {
                         elements.updateNodes(id, data);
                     }
                 } else {
-                    if (data.text) {
+                    if (data.text !== undefined) {
                         elements.list[id].textElement.text(data.text);
                     }
 
-                    if (data.width) {
+                    if (data.width !== undefined) {
                         elements.list[id].textElement.width(data.width);
 
                         elements.list[id].mainElement.width(data.width);
                     }
 
-                    if (data.height) {
+                    if (data.height !== undefined) {
                         elements.list[id].mainElement.height(data.height);
                     }
 
-                    if (data.x && data.y) {
+                    if (data.x !== undefined  && data.y !== undefined) {
                         elements.list[id].textElement.x(data.x);
                         elements.list[id].textElement.y(data.y + 22);
 
@@ -532,6 +532,10 @@ function connect(server_url) {
         if (data.e) {
             const elementIds = Object.keys(data.e);
 
+            if (data.e[0]) {
+                console.log(data.e[0]);
+            }
+
             for (let i = 0; i < elementIds.length; i++) {
                 elements.update(elementIds[i], data.e[elementIds[i]]);
             }
@@ -544,7 +548,7 @@ function firstContact() {
 }
 
 function addTemporaryUser() {
-    socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "none"});
+    socket.emit("set.user", {id: "bob", mouse: "/dev/hidraw0", keyboard: "/dev/hidraw1"});
 }
 
 function memorySizeOf(obj) {

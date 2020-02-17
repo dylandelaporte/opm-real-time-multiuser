@@ -35,15 +35,13 @@ elements.add = function (io, type, x, y) {
 
         elements.attachedArrows(x[0]);
     } else {
-        const text = type === elements.type.OBJECT ? "Object" : "Process";
-
         elements.list[id] = {
             type: type,
             x: x,
             y: y,
-            width: text.length * 17 + 10,
+            width: type === elements.type.OBJECT ? 58 : 65,
             height: 58,
-            text: text,
+            text: type === elements.type.OBJECT ? "Object" : "Process",
             beginArrows: [],
             endArrows: [],
             hover: null,

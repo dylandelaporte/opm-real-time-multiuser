@@ -48,8 +48,20 @@ let devices = {
         13: ["j", "J"],
         14: ["k", "K"],
         15: ["l", "L"],
-        51: [":", ";"],
-        52: ["\"", "'"],
+        51: [";", "+"],
+        52: [":", "*"],
+        50: ["]", "}"],
+        29: ["z", "Z"],
+        27: ["x", "X"],
+        6: ["c", "C"],
+        25: ["v", "V"],
+        5: ["b", "B"],
+        17: ["n", "N"],
+        16: ["m", "M"],
+        54: [",", "<"],
+        55: [".", ">"],
+        56: ["/", "?"],
+        135: ["_", "\""]
     },
     list: {},
     callback: null
@@ -83,7 +95,9 @@ devices.refresh = function () {
     devices.list = {};
 
     for (let i = 0; i < hidDevices.length; i++) {
-        if (hidDevices[i].product.indexOf("USB") >= 0) {
+        console.log("product", hidDevices[i]);
+
+        if (hidDevices[i].product && hidDevices[i].product.indexOf("USB") >= 0) {
             (function (i) {
                 const path = hidDevices[i].path;
 
