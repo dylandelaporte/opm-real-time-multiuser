@@ -48,7 +48,8 @@ const project = {
     },
     currentName: "",
     autosave: true,
-    path: "../projects/"
+    path: "../projects/",
+    logs: []
 };
 
 project.setToolbar = function (frame) {
@@ -335,10 +336,30 @@ project.executeAutosave = async function (elements) {
     if (project.autosave && project.validName(project.currentName)) {
         try {
             await project.saveProject(project.currentName, elements);
+            await project.saveLog(project.currentName, project.logs);
         } catch (e) {
             console.error(e);
         }
     }
+};
+
+project.saveLog = async function (name, logs) {
+    return new Promise(function (resolve, reject) {
+        if (!project.validName(name)) {
+            return reject("The project name is not valid, please update it.");
+        }
+
+        try {
+            while (logs.length > 0) {
+                fs.appendFileSync(__dirname + "/" + project.path + name + "-log.json",
+                    JSON.stringify(logs[0]) + "\n", "utf8");
+
+                logs.shift();
+            }
+        } catch (e) {
+            reject(e);
+        }
+    });
 };
 
 module.exports = project;

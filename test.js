@@ -93,6 +93,8 @@ let packet = {
         }
     },
     send: function () {
+        project.logs.push([new Date(), packet.data]);
+
         io.emit("data", packet.data);
     },
     data: {}

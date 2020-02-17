@@ -331,8 +331,8 @@ const elements = {
                 mainElement: areaElement,
                 textElement: textElement,
                 type: data.type,
-                x: areaElement.x(),
-                y: areaElement.y(),
+                x: data.x,
+                y: data.y,
                 selected: data.selected,
                 hover: data.hover
             };
