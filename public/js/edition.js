@@ -331,6 +331,8 @@ const elements = {
                 mainElement: areaElement,
                 textElement: textElement,
                 type: data.type,
+                x: areaElement.x(),
+                y: areaElement.y(),
                 selected: data.selected,
                 hover: data.hover
             };
@@ -371,13 +373,22 @@ const elements = {
                         elements.list[id].textElement.width(data.width);
 
                         elements.list[id].mainElement.width(data.width);
+
+                        data.x = elements.list[id].x;
+                        data.y = elements.list[id].y;
                     }
 
                     if (data.height !== undefined) {
                         elements.list[id].mainElement.height(data.height);
+
+                        data.x = elements.list[id].x;
+                        data.y = elements.list[id].y;
                     }
 
                     if (data.x !== undefined  && data.y !== undefined) {
+                        elements.list[id].x = data.x;
+                        elements.list[id].y = data.y;
+
                         elements.list[id].textElement.x(data.x);
                         elements.list[id].textElement.y(data.y + 22);
 

@@ -679,85 +679,63 @@ function executeKeyboardAction(devicePath, userId) {
     if (user.action.type === project.action.type.SELECT) {
         let element = elements.list[user.action.elements[0]];
 
-        if (element.type === elements.type.OBJECT || element.type === element.type.PROCESS) {
+        if (element.type === elements.type.OBJECT || element.type === elements.type.PROCESS) {
             const keyBuffer = device.properties.keyBuffer;
-            const keyWidthMap = {
-                q: 9,
-                w: 13,
-                e: 8,
-                r: 6,
-                t: 5,
-                y: 9,
-                u: 9,
-                i: 5,
-                o: 9,
-                p: 9,
-                a: 8,
-                s: 7,
-                d: 9,
-                f: 6,
-                g: 9,
-                h: 9,
-                j: 5,
-                k: 9,
-                l: 5,
-                z: 8,
-                x: 9,
-                c: 8,
-                v: 9,
-                b: 9,
-                n: 9,
-                m: 14,
-                Q: 13,
-                W: 17,
-                E: 11,
-                R: 12,
-                T: 11,
-                Y: 13,
-                U: 13,
-                I: 6,
-                O: 13,
-                P: 10,
-                A: 13,
-                S: 10,
-                D: 13,
-                F: 10,
-                G: 13,
-                H: 13,
-                J: 7,
-                K: 13,
-                L: 11,
-                Z: 11,
-                X: 13,
-                C: 12,
-                V: 13,
-                B: 12,
-                N: 13,
-                M: 16,
-                " ": 5
-            };
 
             while (keyBuffer.length > 0) {
                 if (keyBuffer[0] === "DELETE") {
                     if (element.text.length > 0) {
-                        element.width -= keyWidthMap[element.text[element.text.length - 1]];
+                        const lastElement = element.text[element.text.length - 1];
+
+                        if (lastElement === "\n") {
+                            element.height -= elements.lineHeight;
+                        }
+
                         element.text = element.text.slice(0, element.text.length - 1);
                     }
+                } else if (keyBuffer[0] === "ENTER") {
+                    element.height += elements.lineHeight;
+                    element.text += "\n";
                 } else if (keyBuffer[0] === "TAB") {
-                    element.width += 3 * keyWidthMap[" "];
                     element.text += "   ";
                 } else if (keyBuffer[0] === "SPACE") {
-                    element.width += keyWidthMap[" "];
                     element.text += " ";
                 } else {
-                    element.width += keyWidthMap[keyBuffer[0]];
                     element.text += keyBuffer[0];
                 }
 
                 keyBuffer.shift();
             }
 
-            packet.set(packet.KEYS.ELEMENT, {text: element.text, width: element.width}, user.action.elements[0]);
+            let width = 0;
+            let tmpWidth = 0;
+
+            if (element.text) {
+                const textEnterSplit = element.text.split("\n");
+
+                for (let i = 0; i < textEnterSplit.length; i++) {
+                    tmpWidth = 0;
+
+                    for (let j = 0; j < textEnterSplit[i].length; j++) {
+                        tmpWidth += elements.keyWidthMap[textEnterSplit[i][j]];
+                    }
+
+                    if (tmpWidth > width) {
+                        width = tmpWidth;
+                    }
+                }
+
+                element.width = width + elements.elementPadding;
+            }
+            else {
+                element.width = elements.elementPadding;
+            }
+
+            packet.set(packet.KEYS.ELEMENT, {
+                text: element.text,
+                width: element.width,
+                height: element.height
+            }, user.action.elements[0]);
         } else if (element.type.indexOf("arrow") >= 0) {
             console.log("arrow");
 
