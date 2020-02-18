@@ -20,7 +20,6 @@ const container = {
 
 const mouses = {
     list: {},
-    color: ["#D2691E", "#4C99FF"],
     get: function (id) {
         if (!mouses.list[id]) {
             mouses.add(id);
@@ -32,7 +31,7 @@ const mouses = {
         const mouseDiv = document.createElement("div");
 
         mouseDiv.classList.add("mouse-pointer", "fas", "fa-dot-circle");
-        mouseDiv.style.color = mouses.color[Object.keys(mouses.list).length];
+        mouseDiv.style.color = intToHexadecimalColor(hashCode(id));
 
         mouseDiv.id = "pointer-" + id;
 
@@ -556,6 +555,22 @@ function connect(server_url) {
 
 function firstContact() {
     socket.emit("first.contact");
+}
+
+function hashCode(str) { // java String#hashCode
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
+}
+
+function intToHexadecimalColor(i){
+    var c = (i & 0x00FFFFFF)
+        .toString(16)
+        .toUpperCase();
+
+    return "#" + "00000".substring(0, 6 - c.length) + c;
 }
 
 function addTemporaryUser() {

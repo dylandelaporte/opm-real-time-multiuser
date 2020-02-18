@@ -28,8 +28,8 @@ function connected (server_url, callback, keepConnection, connectedCallback, dis
         }
     });
 
-    socket.on("disconnect", function () {
-        console.log("disconnect");
+    socket.on("disconnect", function (reason) {
+        console.log("disconnect", reason);
 
         callback(true);
 

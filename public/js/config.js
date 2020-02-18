@@ -92,10 +92,14 @@ function loadSettings(socket) {
     socket.emit("list.project");
 
     settingModeButton.onclick = function () {
+        console.log("set.mode", currentMode === 0 ? 1 : 0);
+
         socket.emit("set.mode", {mode: currentMode === 0 ? 1 : 0});
     };
 
     document.getElementById("add-user-form").onsubmit = function () {
+        console.log("add.user");
+
         const userId = this["user-id"].value;
 
         if (userId !== "") {
@@ -107,15 +111,27 @@ function loadSettings(socket) {
         return false;
     };
 
+    document.getElementById("refresh-device-button").onclick = function () {
+        console.log("refresh.device");
+
+        socket.emit("refresh.device");
+    };
+
     saveProjectButton.onclick = function () {
+        console.log("save.project");
+
         socket.emit("save.project", {name: projectName.value});
     };
 
     newProjectButton.onclick = function () {
+        console.log("save.project");
+
         socket.emit("new.project", {name: projectName.value});
     };
 
     autosaveButton.onclick = function () {
+        console.log("autosave.project", !currentAutosave);
+
         socket.emit("autosave.project", {autosave: !currentAutosave});
     };
 
@@ -155,10 +171,14 @@ function loadUserList(general, callbackEdit, callbackDelete) {
             usersList.appendChild(userElement);
 
             document.getElementById("edit-user-" + userIds[i] + "-button").onclick = function () {
+                console.log("edit.user", userIds[i]);
+
                 callbackEdit(userIds[i]);
             };
 
             document.getElementById("delete-user-" + userIds[i] + "-button").onclick = function () {
+                console.log("delete.user", userIds[i]);
+
                 callbackDelete(userIds[i]);
             };
         })(i);

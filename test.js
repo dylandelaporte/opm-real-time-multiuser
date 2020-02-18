@@ -9,6 +9,8 @@ devices.setWindowSize({width: 500, height: 500});
 
 devices.monitor(function (devicePath) {
     if (project.mode === project.MODES.SETTING) {
+        console.log(devicePath, project.editionUser, project.mouseAssociations, project.keyboardAssociations);
+
         packet.clear();
 
         if (project.editionUser) {
@@ -49,6 +51,11 @@ devices.monitor(function (devicePath) {
             packet.send();
         }
     }
+}, function (path) {
+    delete project.mouseAssociations[path];
+    delete project.keyboardAssociations[path];
+
+    sendGeneral();
 });
 
 //autosave
@@ -134,11 +141,14 @@ io.on("connection", client => {
     });
 
     client.on("set.mode", (data) => {
-        console.log(data);
+        console.log("set.mode", data);
+
         if (data.mode === project.MODES.SETTING) {
             project.mode = project.MODES.SETTING;
         } else {
             project.mode = project.MODES.EDITION;
+
+            devices.reset();
         }
 
         sendGeneral();
@@ -153,6 +163,8 @@ io.on("connection", client => {
      */
 
     client.on("list.project", async () => {
+        console.log("list.project");
+
         packet.clear();
 
         try {
@@ -169,6 +181,8 @@ io.on("connection", client => {
     });
 
     client.on("new.project", async data => {
+        console.log("new.project", data);
+
         packet.clear();
 
         try {
@@ -186,10 +200,14 @@ io.on("connection", client => {
     });
 
     client.on("load.project", async data => {
+        console.log("load.project", data);
+
         packet.clear();
 
         try {
             await project.loadProject(data.name, elements);
+
+            devices.setWindowSize(project.frame);
 
             packet.set(packet.KEYS.SUCCESS, "Project loaded!");
             packet.set(packet.KEYS.GENERAL, project.getGeneral());
@@ -203,6 +221,8 @@ io.on("connection", client => {
     });
 
     client.on("save.project", async data => {
+        console.log("save.project", data);
+
         packet.clear();
 
         try {
@@ -223,12 +243,16 @@ io.on("connection", client => {
     });
 
     client.on("autosave.project", data => {
+        console.log("autosave.project", data);
+
         project.autosave = !!data.autosave;
 
         sendGeneral();
     });
 
     client.on("add.user", data => {
+        console.log("add.user", data);
+
         project.addUser(data.id);
 
         sendGeneral();
@@ -249,9 +273,17 @@ io.on("connection", client => {
     });
 
     client.on("delete.user", data => {
+        console.log("delete.user", data);
+
         project.deleteUser(data.id);
 
         sendGeneral();
+    });
+
+    client.on("refresh.device", () => {
+        console.log("refresh.device");
+
+        devices.refresh();
     });
 
     client.on("disconnect", () => {
@@ -261,26 +293,39 @@ io.on("connection", client => {
 
 io.listen(3000);
 
-function finishSelectAction(user) {
-    /*if (user.action.type === project.action.type.HOVER && user.action.elements.length > 0) {
-        elements.list[user.action.elements[0]].hover = null;
+function removeSelectActionOnUser(userId) {
+    if (project.users[userId]
+        && project.users[userId].action.type === project.action.type.SELECT
+        && project.users[userId].action.elements.length > 0) {
+        console.log("remove select for user", userId);
+
+        const elementId = project.users[userId].action.elements[0];
+
+        project.users[userId].action.type = project.action.type.NONE;
+
+        project.users[userId].action.elements = [];
+
+        return elementId;
     }
-     */
 
-    if (user.action.type === project.action.type.SELECT && user.action.elements.length > 0) {
-        console.log("end select");
+    return null;
+}
 
-        user.action.type = project.action.type.NONE;
+function finishSelectAction(userId, elementId) {
+    if (elementId) {
+        removeSelectActionOnUser(elements.list[elementId].selected);
+    }
 
-        const elementId = user.action.elements[0];
+    const userElementId = removeSelectActionOnUser(userId);
 
+    if (userElementId) {
+        elementId = userElementId;
+    }
+
+    if (elementId !== undefined) {
         elements.list[elementId].selected = null;
 
-        user.action.elements = [];
-
         packet.set(packet.KEYS.ELEMENT, {selected: null}, elementId);
-
-        //elements.output(io, elementId);
     }
 }
 
@@ -357,7 +402,7 @@ function executeMouseAction(devicePath, userId) {
 
     if (buttonToolbar) {
         if (device.properties.click.left && user.action.status === project.action.status.OUT) {
-            finishSelectAction(user);
+            finishSelectAction(userId);
 
             if (buttonToolbar === "LINK_BUTTON") {
                 if (Object.keys(elements.list).length > 1) {
@@ -451,7 +496,7 @@ function executeMouseAction(devicePath, userId) {
                     } else if (user.action.status === project.action.status.OUT) {
                         if (elements.list[collisionElement.id].type.indexOf("arrow") >= 0) {
                             if (collisionElement.node) {
-                                finishSelectAction(user);
+                                finishSelectAction(userId, collisionElement.id);
 
                                 user.action.type = project.action.type.MOVE_NODE_LINK;
 
@@ -467,7 +512,7 @@ function executeMouseAction(devicePath, userId) {
 
                                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
                             } else {
-                                finishSelectAction(user);
+                                finishSelectAction(userId, collisionElement.id);
 
                                 user.action.type = project.action.type.NEW_NODE_LINK;
 
@@ -487,7 +532,7 @@ function executeMouseAction(devicePath, userId) {
                             }
 
                         } else {
-                            finishSelectAction(user);
+                            finishSelectAction(userId, collisionElement.id);
 
                             user.action.type = project.action.type.MOVE;
 
@@ -520,7 +565,7 @@ function executeMouseAction(devicePath, userId) {
                     } else if (user.action.type === project.action.type.SELECT) {
                         console.log("end select");
 
-                        finishSelectAction(user);
+                        finishSelectAction(userId);
                     }
                 }
             }
@@ -597,12 +642,16 @@ function executeMouseAction(devicePath, userId) {
                 && user.action.status === project.action.status.IN) {
                 console.log("end move / new node link");
 
-                finishSelectAction(user);
+                //finishSelectAction(userId);
+
+                console.log("empty select", project.users);
 
                 user.action.type = project.action.type.SELECT;
                 user.action.status = project.action.status.OUT;
 
                 elements.list[user.action.elements[0]].selected = userId;
+
+                console.log("select", project.users);
 
                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
                 packet.set(packet.KEYS.ELEMENT, {selected: userId}, user.action.elements[0]);
