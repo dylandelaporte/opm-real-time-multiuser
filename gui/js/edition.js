@@ -340,6 +340,8 @@ const elements = {
         }
 
         elements.layer.draw();
+
+        console.log("elements.list keys.length", Object.keys(elements.list).length);
     },
     update: function (id, data) {
         if (elements.list[id]) {
@@ -554,6 +556,8 @@ function connect(server_url) {
 }
 
 function firstContact() {
+    console.log("first.contact");
+
     socket.emit("first.contact");
 }
 
@@ -625,4 +629,16 @@ window.onload = function () {
     else {
         console.log("unable to connect to the server");
     }
+
+    console.log("Page reload: " + localStorage.getItem("counter"));
 };
+
+window.addEventListener("unload", function () {
+    let counter = parseInt(localStorage.getItem("counter"));
+
+    if (isNaN(counter)) {
+        counter = 0;
+    }
+
+    localStorage.setItem("counter", ++counter + "");
+});

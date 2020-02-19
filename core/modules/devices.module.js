@@ -84,8 +84,6 @@ devices.monitor = function (deviceCallback, resetControlsCallback) {
 devices.refresh = function () {
     const hidDevices = HID.devices();
 
-    let countDevices = 0;
-
     for (let i = 0; i < hidDevices.length; i++) {
         (function (i) {
             console.log(hidDevices[i]);
@@ -150,7 +148,6 @@ devices.refresh = function () {
                     }
 
                     devices.list[path] = deviceData;
-                    countDevices++;
                 }
             }
         })(i);

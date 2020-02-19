@@ -15,6 +15,8 @@ window.onload = function () {
             //TMP
             window.socket = socket;
         }, true, function () {
+            error.style.display = "none";
+
             loadSettings(clientSocket);
         }, function () {
             console.log("disconnected");

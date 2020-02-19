@@ -1,4 +1,7 @@
-const io = require('socket.io')();
+const io = require('socket.io')(3000, {
+    pingInterval: 15000,
+    pingTimeout: 10000
+});
 
 const devices = require("./modules/devices.module");
 const elements = require("./modules/elements.module");
@@ -99,45 +102,72 @@ let packet = {
             packet.data[key] = data;
         }
     },
-    send: function () {
-        project.logs.push([new Date(), packet.data]);
+    send: function (client) {
+        project.logs.push([new Date(), JSON.stringify(packet.data)]);
 
-        io.emit("data", packet.data);
+        console.log("packet send", packet.data);
+
+        if (client) {
+            client.emit("data", packet.data);
+        }
+        else {
+            io.emit("data", packet.data);
+        }
+
     },
     data: {}
 };
 
-function sendAtConnection() {
+function sendAtConnection(client) {
     packet.clear();
 
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
     if (project.mode === project.MODES.EDITION) {
+        packet.clear();
+
         packet.set(packet.KEYS.WINDOW, project.frame);
         packet.set(packet.KEYS.TOOLBAR, project.toolbar);
-        packet.set(packet.KEYS.ELEMENT, elements.list);
     }
 
-    packet.send();
+    packet.send(client);
+
+    const elementKeys = Object.keys(elements.list);
+
+    if (elementKeys.length > 0) {
+        for (let i = 0; i < elementKeys.length; i++) {
+            (function (i) {
+                setTimeout(function () {
+                    packet.clear();
+
+                    packet.set(packet.KEYS.ELEMENT, elements.list[elementKeys[i]], elementKeys[i]);
+
+                    packet.send(client);
+                }, 35 * i);
+            })(i);
+        }
+    }
 }
 
-function sendGeneral() {
+function sendGeneral(client) {
     packet.clear();
 
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
 
-    packet.send();
+    packet.send(client);
 }
 
 io.on("connection", client => {
     console.log("connection");
 
     client.on("first.contact", () => {
-        sendAtConnection();
+        console.log("first.contact");
+
+        sendAtConnection(client);
     });
 
     client.on("send.general", () => {
-        sendGeneral();
+        sendGeneral(client);
     });
 
     client.on("set.mode", (data) => {
@@ -177,7 +207,7 @@ io.on("connection", client => {
             packet.set(packet.KEYS.ERROR, e);
         }
 
-        packet.send();
+        packet.send(client);
     });
 
     client.on("new.project", async data => {
@@ -196,7 +226,7 @@ io.on("connection", client => {
             packet.set(packet.KEYS.ERROR, e);
         }
 
-        packet.send();
+        packet.send(client);
     });
 
     client.on("load.project", async data => {
@@ -217,7 +247,7 @@ io.on("connection", client => {
             packet.set(packet.KEYS.ERROR, e);
         }
 
-        packet.send();
+        packet.send(client);
     });
 
     client.on("save.project", async data => {
@@ -239,7 +269,7 @@ io.on("connection", client => {
             packet.set(packet.KEYS.ERROR, e);
         }
 
-        packet.send();
+        packet.send(client);
     });
 
     client.on("autosave.project", data => {
@@ -291,7 +321,7 @@ io.on("connection", client => {
     });
 });
 
-io.listen(3000);
+//io.listen(3000);
 
 function removeSelectActionOnUser(userId) {
     if (project.users[userId]
@@ -322,7 +352,9 @@ function finishSelectAction(userId, elementId) {
         elementId = userElementId;
     }
 
-    if (elementId !== undefined) {
+    console.log("elementId", elementId);
+
+    if (elementId !== undefined && elements.list[elementId]) {
         elements.list[elementId].selected = null;
 
         packet.set(packet.KEYS.ELEMENT, {selected: null}, elementId);
