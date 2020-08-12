@@ -1,0 +1,10 @@
+<%- include("../templates/header.ejs") %>
+
+<div class="container">
+    <div class="alert alert-danger mt-5">Error <%= code %>! <%= message %></div>
+    <% if (callback) { %>
+        <a href="/" class="btn btn-link">Go back</a>
+    <% } %>
+</div>
+
+<%- include("../templates/footer.ejs") %>

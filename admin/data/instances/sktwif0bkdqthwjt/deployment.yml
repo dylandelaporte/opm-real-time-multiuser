@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  core:
+    image: dyde/opre-software-core:latest
+    ports:
+      - 6258:3000
+      #- "5000:5000"
+    volumes:
+      - /Users/dylandelaporte/WebstormProjects/opmmodel/admin/data/instances/sktwif0bkdqthwjt/data:/app/projects
+  gui:
+    image: dyde/opre-software-gui:latest
+    ports:
+      - 6259:80

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/animate.css" rel="stylesheet">
+
+    <link href="css/main.css" rel="stylesheet">
+
+    <link href="css/config.css" rel="stylesheet">
+</head>
+<body>
+<div id="container" class="container">
+    <div id="settings" class="content" style="display: none;">
+        <a href="index.html" class="btn btn-link">Back to menu</a>
+        <div class="card">
+            <div class="card-body">
+                The server must be in setting mode to edit any parameter. When this mode is activated the edition mode
+                is not available.
+            </div>
+        </div>
+        <button type="button" id="setting-mode-button" class="btn btn-outline-warning btn-lg btn-block">Enable setting
+            mode
+        </button>
+        <div id="settings-content" style="display: none;">
+            <div id="add-user-card" class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Users</h5>
+                </div>
+                <ul id="user-list" class="list-group list-group-flush"></ul>
+                <div class="card-body">
+                    <form id="add-user-form">
+                        <div class="form-row">
+                            <div class="col">
+                                <input type="text" name="user-id" class="form-control" placeholder="User id">
+                            </div>
+                            <div class="col">
+                                <button type="submit" class="btn btn-primary">Add user</button>
+                                <button type="button" id="refresh-device-button" class="btn btn-outline-secondary">
+                                    Refresh device
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <hr>
+                <div class="card-body">
+                    <h5 class="card-title">Local controls</h5>
+                    <p>Enable local controls to edit with mouse and keyboard on a computer</p>
+                    <div class="btn-group">
+                        <button id="local-controls-button" class="btn btn-outline-primary"></button>
+                        <button id="controls-autosetup-button" class="btn btn-outline-primary"></button>
+                    </div>
+                </div>
+            </div>
+            <div id="current-project" class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Current project</h5>
+                    <form>
+                        <div class="form-row">
+                            <div class="col">
+                                <input type="text" id="project-name" name="project-name" class="form-control"
+                                       placeholder="Project name">
+                            </div>
+                            <div class="col">
+                                <button type="button" id="save-project-button" class="btn btn-primary">Save</button>
+                                <button type="button" id="new-project-button" class="btn btn-outline-primary">New
+                                </button>
+                                <button type="button" id="autosave-button" class="btn btn-outline-info">Disable
+                                    autosave
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div id="load-project" class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Load a project</h5>
+                    <p>When opening a project the previous project has to be saved too.</p>
+                </div>
+                <ul id="project-list" class="list-group list-group-flush"></ul>
+            </div>
+        </div>
+    </div>
+    <div id="error" class="content" style="display: none;">
+        <div class="alert alert-warning">Error! Unable to connect to the server.</div>
+    </div>
+</div>
+</body>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/notify.min.js"></script>
+
+<script src="js/main.js"></script>
+<script src="js/controls.js"></script>
+
+<script src="js/config.js"></script>
+</html>

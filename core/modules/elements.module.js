@@ -4,8 +4,20 @@ const elements = {
     type: {
         OBJECT: "object",
         PROCESS: "process",
+        ARROW_CHARACTERIZATION: "arrow_characterization",
+        ARROW_CHARACTERIZATION_INVERT: "arrow_characterization_invert",
+        ARROW_GENERALIZATION: "arrow_generalization",
+        ARROW_GENERALIZATION_INVERT: "arrow_generalization_invert",
         ARROW_AGGREGATION: "arrow_aggregation",
-        ARROW_EXHIBITION: "arrow_exhibition"
+        ARROW_AGGREGATION_INVERT: "arrow_aggregation_invert",
+        ARROW_RELATIONSHIP: "arrow_relationship",
+        ARROW_INSTRUMENT: "arrow_instrument",
+        ARROW_INSTRUMENT_INVERT: "arrow_instrument_invert",
+        ARROW_EFFECT: "arrow_effect",
+        ARROW_EFFECT_INVERT: "arrow_effect_invert",
+        ARROW_CONSUMPTION: "arrow_consumption",
+        ARROW_AGENT: "arrow_agent",
+        ARROW_AGENT_INVERT: "arrow_agent_invert"
     },
     collisionType: {
         center: 0
@@ -15,7 +27,7 @@ const elements = {
     keyWidthMap: {"0": 9, "1": 9, "2": 9, "3": 9, "4": 9, "5": 9, "6": 9, "7": 9, "8": 9, "9": 9, "!": 6, "\"": 7, "#": 9, "$": 9, "%": 15, "&": 14, "'": 3, "(": 6, ")": 6, "-": 6, "=": 10, "^": 8, "~": 10, "¥": 9, "|": 4, "q": 9, "w": 13, "e": 8, "r": 6, "t": 5, "y": 9, "u": 9, "i": 5, "o": 9, "p": 9, "@": 17, "`": 6, "[": 6, "{": 9, "a": 8, "s": 7, "d": 9, "f": 6, "g": 9, "h": 9, "j": 5, "k": 9, "l": 5, ";": 5, "+": 10, ":": 5, "*": 9, "]": 6, "}": 9, "z": 8, "x": 9, "c": 8, "v": 9, "b": 9, "n": 9, "m": 14, ",": 5, "<": 10, ".": 5, ">": 10, "/": 5, "?": 8, "_": 9, "\\": 5, "Q": 13, "W": 17, "E": 11, "R": 12, "T": 11, "Y": 13, "U": 13, "I": 6, "O": 13, "P": 10, "A": 13, "S": 10, "D": 13, "F": 10, "G": 13, "H": 13, "J": 7, "K": 13, "L": 11, "Z": 11, "X": 13, "C": 12, "V": 13, "B": 12, "N": 13, "M": 16, " ": 5}
 };
 
-elements.add = function (io, type, x, y) {
+elements.add = function (type, x, y) {
     const id = elements.nextId;
 
     elements.nextId++;
@@ -90,7 +102,7 @@ elements.centerElement = function (id) {
     return {x: element.x + element.width / 2, y: element.y + element.height / 2};
 };
 
-elements.move = function (io, id, x, y) {
+elements.move = function (id, x, y) {
     let element = elements.list[id];
 
     element.x = x;
@@ -156,18 +168,6 @@ elements.angleNodeArrow = function (id, nodeId) {
     }
 
     return angle * (180 / Math.PI);
-};
-
-elements.output = function (io, id) {
-    //io.emit("element", {id: id, properties: elements.list[id]});
-};
-
-elements.outputAll = function (io) {
-    const elementIds = Object.keys(elements.list);
-
-    for (let i = 0; i < elementIds.length; i++) {
-        elements.output(io, elementIds[i]);
-    }
 };
 
 elements.collisions = function (mouseProperties) {

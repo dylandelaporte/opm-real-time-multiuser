@@ -1,6 +1,3 @@
-const HID = require('node-hid');
-const usbDetect = require('usb-detection');
-
 let devices = {
     type: {
         MOUSE: 0,
@@ -63,95 +60,27 @@ let devices = {
         55: [".", ">"],
         56: ["/", "?"],
         135: ["_", "\""],
-        44: ["SPACE", "SPACE"]
+        44: ["SPACE", "SPACE"],
+        79: ["RIGHT", "RIGHT"],
+        80: ["LEFT", "LEFT"],
+        81: ["DOWN", "DOWN"],
+        82: ["UP", "UP"]
     },
     list: {},
     deviceCallback: null,
-    resetControlsCallback: null
+    deleteDeviceCallback: null,
+    logger: null
 };
 
 devices.setWindowSize = function (frame) {
     devices.frame = frame;
 };
 
-devices.monitor = function (deviceCallback, resetControlsCallback) {
+devices.monitor = function (deviceCallback, deleteDeviceCallback, logger) {
     devices.deviceCallback = deviceCallback;
-    devices.resetControlsCallback = resetControlsCallback;
+    devices.deleteDeviceCallback = deleteDeviceCallback;
 
-    devices.refresh();
-};
-
-devices.refresh = function () {
-    const hidDevices = HID.devices();
-
-    for (let i = 0; i < hidDevices.length; i++) {
-        (function (i) {
-            console.log(hidDevices[i]);
-
-            const path = hidDevices[i].path;
-
-            if (!devices.list[path]) {
-                if (hidDevices[i].product
-                    && (hidDevices[i].product.indexOf("Mouse") >= 0
-                    || hidDevices[i].product.indexOf("Keyboard") >= 0)) {
-                    console.log("connection to ", path);
-
-                    const device = new HID.HID(path);
-
-                    device.on("error", function (error) {
-                        console.log("error on device", hidDevices[i], error);
-
-                        device.close();
-
-                        delete devices.list[path];
-
-                        devices.resetControlsCallback(path);
-                    });
-
-                    let deviceData = {
-                        object: device
-                    };
-
-                    if (hidDevices[i].product.indexOf("Mouse") >= 0) {
-                        device.on("data", function (buffer) {
-                            let dataArray = Uint8Array.from(buffer);
-
-                            devices.mouseUpdate(path, dataArray);
-                            devices.deviceCallback(path);
-                        });
-
-                        deviceData.type = devices.type.MOUSE;
-                        deviceData.properties = {
-                            click: {
-                                left: false,
-                                right: false,
-                                wheel: false
-                            },
-                            left: 0,
-                            top: 0,
-                            wheel: 0
-                        };
-                    } else {
-                        device.on("data", function (buffer) {
-                            let dataArray = Uint8Array.from(buffer);
-
-                            devices.keyboardUpdate(path, dataArray);
-                            devices.deviceCallback(path);
-                        });
-
-                        deviceData.type = devices.type.KEYBOARD;
-                        deviceData.properties = {
-                            shift: false,
-                            shiftLock: false,
-                            keyBuffer: []
-                        };
-                    }
-
-                    devices.list[path] = deviceData;
-                }
-            }
-        })(i);
-    }
+    devices.logger = logger;
 };
 
 devices.reset = function () {
@@ -168,27 +97,55 @@ devices.reset = function () {
     }
 };
 
+devices.deleteDevice = function (path) {
+    delete devices.list[path];
+
+    devices.deleteDeviceCallback(path);
+};
+
 devices.mouseUpdate = function (path, data) {
+    if (!devices.list[path]) {
+        devices.list[path] = {
+            type: devices.type.MOUSE,
+            properties: {
+                click: {
+                    left: false,
+                    right: false,
+                    wheel: false
+                },
+                left: 0,
+                top: 0,
+                wheel: 0
+            }
+        };
+    }
+
     let properties = devices.list[path].properties;
 
-    if (data[1] > 100) {
-        properties.left -= 256 - data[1];
-    } else if (data[1] > 0) {
-        properties.left += data[1];
+    if (data.length > 4) {
+        properties.left = data[1];
+        properties.top = data[2]
     }
+    else {
+        if (data[1] > 100) {
+            properties.left -= 256 - data[1];
+        } else if (data[1] > 0) {
+            properties.left += data[1];
+        }
 
-    if (data[2] > 100) {
-        properties.top -= 256 - data[2];
-    } else if (data[2] > 0) {
-        properties.top += data[2];
-    }
+        if (data[2] > 100) {
+            properties.top -= 256 - data[2];
+        } else if (data[2] > 0) {
+            properties.top += data[2];
+        }
 
-    if (data[3] > 100) {
-        properties.wheel = 2;
-    } else if (data[3] > 0) {
-        properties.wheel = 1;
-    } else {
-        properties.wheel = 0;
+        if (data[3] > 100) {
+            properties.wheel = 2;
+        } else if (data[3] > 0) {
+            properties.wheel = 1;
+        } else {
+            properties.wheel = 0;
+        }
     }
 
     if (properties.left < 0) {
@@ -248,38 +205,58 @@ devices.mouseUpdate = function (path, data) {
             properties.click.right = false;
             properties.click.wheel = false;
     }
+
+    devices.deviceCallback(path);
 };
 
 devices.keyboardUpdate = function (path, data) {
+    if (!devices.list[path]) {
+        devices.list[path] = {
+            type: devices.type.KEYBOARD,
+            properties: {
+                shift: false,
+                shiftLock: false,
+                keyBuffer: []
+            }
+        };
+    }
+
     let properties = devices.list[path].properties;
 
-    properties.shift = data[0] === 2 || data[0] === 32;
+    if (data.length === 2) {
+        properties.shift = data[0];
 
-    for (let i = 2; i < data.length; i++) {
-        let key = devices.keyMap[data[i]];
-
-        if (key) {
-            if (key[0] === "LOCK") {
+        if (data[1] !== null) {
+            if (data[1] === "LOCK") {
                 properties.shiftLock = !properties.shiftLock;
-            } else {
-                properties.keyBuffer.push(key[properties.shift || properties.shiftLock ? 1 : 0]);
+            }
+            else {
+                properties.keyBuffer.push(data[1]);
             }
         }
     }
-};
+    else {
+        properties.shift = data[0] === 2 || data[0] === 32;
 
-devices.getAvailableDevices = function (io, mouseAssociations, keyboardAssociations) {
-    let availableDevices = {};
+        for (let i = 2; i < data.length; i++) {
+            if (data[i] > 0) {
+                let key = devices.keyMap[data[i]];
 
-    const listKeys = Object.keys(devices.list);
-
-    for (let i = 0; i < listKeys.length; i++) {
-        if (!(mouseAssociations[listKeys[i]] && keyboardAssociations[listKeys[i]])) {
-            availableDevices[listKeys[i]] = devices.list[listKeys[i]].type;
+                if (key) {
+                    if (key[0] === "LOCK") {
+                        properties.shiftLock = !properties.shiftLock;
+                    } else {
+                        properties.keyBuffer.push(key[properties.shift || properties.shiftLock ? 1 : 0]);
+                    }
+                }
+                else {
+                    devices.logger.warn("keyboard: " + path + ", key number: " + data[i] + " not found");
+                }
+            }
         }
     }
 
-    io.emit("devices", availableDevices);
+    devices.deviceCallback(path);
 };
 
 module.exports = devices;

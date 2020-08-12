@@ -1,19 +1,74 @@
-const io = require('socket.io')(3000, {
-    pingInterval: 15000,
-    pingTimeout: 10000
-});
+const ws = require('ws');
+
+const { createLogger, format, transports } = require("winston");
+const { consoleFormat } = require("winston-console-format");
 
 const devices = require("./modules/devices.module");
 const elements = require("./modules/elements.module");
 
 const project = require("./modules/project.module");
 
-devices.setWindowSize({width: 500, height: 500});
+const logger = createLogger({
+    level: "silly",
+    format: format.combine(
+        format.timestamp(),
+        format.ms(),
+        format.errors({ stack: true }),
+        format.splat(),
+        format.json()
+    ),
+    defaultMeta: { service: "Test" },
+    transports: [
+        new transports.Console({
+            format: format.combine(
+                format.colorize({ all: true }),
+                format.padLevels(),
+                consoleFormat({
+                    showMeta: true,
+                    metaStrip: ["timestamp", "service"],
+                    inspectOptions: {
+                        depth: Infinity,
+                        colors: true,
+                        maxArrayLength: Infinity,
+                        breakLength: 120,
+                        compact: Infinity
+                    }
+                })
+            )
+        })
+    ]
+});
+
+devices.setWindowSize({width: 1500, height: 1500});
+project.setLogger(logger);
+
+const coreSocketServer = new ws.Server({port: 3000}/*, {pingInterval: 15000, pingTimeout: 10000}*/);
+const devicesSocketServer = new ws.Server({port: 5000});
+
+devicesSocketServer.on("connection", client => {
+    logger.info("Device connection");
+
+    client.onmessage = data => {
+        try {
+            if (data.type === "mouse") {
+                devices.mouseUpdate(data.path, data.data);
+            }
+            else if (data.type === "keyboard") {
+                devices.keyboardUpdate(data.path, data.data);
+            }
+            else if (data.type === "delete") {
+                devices.deleteDevice(data.path);
+            }
+        } catch (e) {
+            logger.error(e);
+        }
+    };
+});
 
 devices.monitor(function (devicePath) {
-    if (project.mode === project.MODES.SETTING) {
-        console.log(devicePath, project.editionUser, project.mouseAssociations, project.keyboardAssociations);
+    //logger.debug("device data: " + devicePath);
 
+    if (project.mode === project.MODES.SETTING) {
         packet.clear();
 
         if (project.editionUser) {
@@ -40,6 +95,8 @@ devices.monitor(function (devicePath) {
         let keyboardUserId = project.keyboardAssociations[devicePath];
 
         if (mouseUserId) {
+            project.users[mouseUserId].lastUpdate = new Date();
+
             packet.clear(mouseUserId);
             packet.set(packet.KEYS.MOUSE, devices.list[devicePath].properties);
 
@@ -47,6 +104,8 @@ devices.monitor(function (devicePath) {
 
             packet.send();
         } else if (keyboardUserId) {
+            project.users[keyboardUserId].lastUpdate = new Date();
+
             packet.clear(keyboardUserId);
 
             executeKeyboardAction(devicePath, keyboardUserId);
@@ -59,11 +118,23 @@ devices.monitor(function (devicePath) {
     delete project.keyboardAssociations[path];
 
     sendGeneral();
-});
+}, logger);
 
 //autosave
 function autosave() {
     project.executeAutosave(elements);
+
+    const currentDate = new Date(new Date().getTime() - 300000);
+
+    for (let user in project.users) {
+        if (project.users[user].lastUpdate < currentDate) {
+            logger.info("User " + user + " was not active in the last 5 minutes, sending disconnect event.");
+
+            packet.clear();
+            packet.set(packet.KEYS.DISCONNECT, {userId: user});
+            packet.send();
+        }
+    }
 
     setTimeout(autosave, 30000);
 }
@@ -82,6 +153,7 @@ let packet = {
         TOOLBAR: "t",
         PROJECT: "p",
         SUCCESS: "s",
+        DISCONNECT: "d",
         ERROR: "er"
     },
     clear: function (id) {
@@ -105,13 +177,11 @@ let packet = {
     send: function (client) {
         project.logs.push([new Date(), JSON.stringify(packet.data)]);
 
-        console.log("packet send", packet.data);
-
         if (client) {
-            client.emit("data", packet.data);
+            client.send(JSON.stringify(packet.data));
         }
         else {
-            io.emit("data", packet.data);
+            coreSocketServer.clients.forEach(client => client.send(JSON.stringify(packet.data)));
         }
 
     },
@@ -122,6 +192,8 @@ function sendAtConnection(client) {
     packet.clear();
 
     packet.set(packet.KEYS.GENERAL, project.getGeneral());
+
+    packet.send(client);
 
     if (project.mode === project.MODES.EDITION) {
         packet.clear();
@@ -157,21 +229,81 @@ function sendGeneral(client) {
     packet.send(client);
 }
 
-io.on("connection", client => {
-    console.log("connection");
+coreSocketServer.on("connection", client => {
+    logger.info("Client connection");
 
-    client.on("first.contact", () => {
-        console.log("first.contact");
+    client.onmessage = data => {
+        try {
+            data = JSON.parse(data.data);
 
-        sendAtConnection(client);
-    });
+            console.log("data", data);
 
-    client.on("send.general", () => {
-        sendGeneral(client);
-    });
+            switch (data.type) {
+                case "first.contact":
+                    logger.info("Client first.contact");
 
-    client.on("set.mode", (data) => {
-        console.log("set.mode", data);
+                    sendAtConnection(client);
+                    break;
+                case "send.general":
+                    sendGeneral(client);
+                    break;
+                case "set.mode":
+                    setMode(data);
+                    break;
+                case "mouse":
+                    mouse(data);
+                    break;
+                case "keyboard":
+                    keyboard(data);
+                    break;
+                case "list.project":
+                    listProject();
+                    break;
+                case "new.project":
+                    newProject(data);
+                    break;
+                case "load.project":
+                    loadProject(data);
+                    break;
+                case "save.project":
+                    saveProject(data);
+                    break;
+                case "autosave.project":
+                    autosaveProject(data);
+                    break;
+                case "controls.local":
+                    controlsLocal(data);
+                    break;
+                case "controls.autoSetup":
+                    controlsAutoSetup(data);
+                    break;
+                case "add.user":
+                    addUser(data);
+                    break;
+                case "set.user":
+                    setUser(data);
+                    break;
+                case "set.edition.user":
+                    setEditionUser(data);
+                    break;
+                case "delete.user":
+                    deleteUser(data);
+                    break;
+                case "refresh.device":
+                    refreshDevice();
+                    break;
+                case "disconnect":
+                    disconnect(data);
+                    break;
+            }
+        }
+        catch (e) {
+            logger.error("Unable to parse data: " + data);
+        }
+    };
+
+    const setMode = (data) => {
+        logger.info("Client set.mode: ", data);
 
         if (data.mode === project.MODES.SETTING) {
             project.mode = project.MODES.SETTING;
@@ -182,18 +314,32 @@ io.on("connection", client => {
         }
 
         sendGeneral();
-    });
+    };
+
+    //controls
+    const mouse = device => {
+        //logger.debug("mouse", device);
+
+        try {
+            devices.mouseUpdate(device.path, device.data);
+        } catch (e) {
+            logger.error(e);
+        }
+    };
+
+    const keyboard = device => {
+        //logger.debug("keyboard", device);
+
+        try {
+            devices.keyboardUpdate(device.path, device.data);
+        } catch (e) {
+            logger.error(e);
+        }
+    };
 
     //settings
-
-    /*
-    client.on("get.availabledevices", () => {
-        devices.getAvailableDevices(io, project.mouseAssociations, project.keyboardAssociations);
-    });
-     */
-
-    client.on("list.project", async () => {
-        console.log("list.project");
+    const listProject = async () => {
+        logger.info("Client list.project");
 
         packet.clear();
 
@@ -208,10 +354,10 @@ io.on("connection", client => {
         }
 
         packet.send(client);
-    });
+    };
 
-    client.on("new.project", async data => {
-        console.log("new.project", data);
+    const newProject = async data => {
+        logger.info("Client new.project: ", data);
 
         packet.clear();
 
@@ -227,10 +373,10 @@ io.on("connection", client => {
         }
 
         packet.send(client);
-    });
+    };
 
-    client.on("load.project", async data => {
-        console.log("load.project", data);
+    const loadProject = async data => {
+        logger.info("Client load.project: " + data);
 
         packet.clear();
 
@@ -248,10 +394,10 @@ io.on("connection", client => {
         }
 
         packet.send(client);
-    });
+    };
 
-    client.on("save.project", async data => {
-        console.log("save.project", data);
+    const saveProject = async data => {
+        logger.info("Client save.project: ", data);
 
         packet.clear();
 
@@ -270,65 +416,82 @@ io.on("connection", client => {
         }
 
         packet.send(client);
-    });
+    };
 
-    client.on("autosave.project", data => {
-        console.log("autosave.project", data);
+    const autosaveProject = data => {
+        logger.info("Client autosave.project: ", data);
 
         project.autosave = !!data.autosave;
 
         sendGeneral();
-    });
+    };
 
-    client.on("add.user", data => {
-        console.log("add.user", data);
+    const controlsLocal = data => {
+        logger.info("Client controls.local: ", data);
+
+        project.controls.local = !!data["controls.local"];
+
+        sendGeneral();
+    };
+
+    const controlsAutoSetup = data => {
+        logger.info("Client controls.autoSetup: ", data);
+
+        project.controls.autoSetup = !!data["controls.autoSetup"];
+
+        sendGeneral();
+    };
+
+    const addUser = data => {
+        logger.info("Client add.user: ", data);
 
         project.addUser(data.id);
 
         sendGeneral();
-    });
+    };
 
-    client.on("set.user", data => {
-        console.log("set.user", data);
+    const setUser = data => {
+        logger.info("Client set.user: ", data);
 
         project.setUser(data);
 
         //sendGeneral();
-    });
+    };
 
-    client.on("set.edition.user", data => {
-        console.log("set.edition.user", data);
+    const setEditionUser = data => {
+        logger.info("Client set.edition.user: ", data);
 
         project.editionUser = data.id;
-    });
+    };
 
-    client.on("delete.user", data => {
-        console.log("delete.user", data);
+    const deleteUser = data => {
+        logger.info("Client delete.user: ", data);
 
         project.deleteUser(data.id);
 
         sendGeneral();
-    });
+    };
 
-    client.on("refresh.device", () => {
-        console.log("refresh.device");
+    const refreshDevice = () => {
+        logger.info("Client refresh.device");
 
-        devices.refresh();
-    });
+        devicesSocketServer.clients.forEach(client => client.send("refresh"));
+    };
 
-    client.on("disconnect", () => {
-        console.log("disconnect");
-    });
+    const disconnect = data => {
+        packet.clear();
+        packet.set(packet.KEYS.DISCONNECT, {userId: data.userId});
+    }
+
+    client.onclose = () => {
+        logger.info("Client disconnection");
+    };
 });
-
-//io.listen(3000);
 
 function removeSelectActionOnUser(userId) {
     if (project.users[userId]
         && project.users[userId].action.type === project.action.type.SELECT
         && project.users[userId].action.elements.length > 0) {
-        console.log("remove select for user", userId);
-
         const elementId = project.users[userId].action.elements[0];
 
         project.users[userId].action.type = project.action.type.NONE;
@@ -351,8 +514,6 @@ function finishSelectAction(userId, elementId) {
     if (userElementId) {
         elementId = userElementId;
     }
-
-    console.log("elementId", elementId);
 
     if (elementId !== undefined && elements.list[elementId]) {
         elements.list[elementId].selected = null;
@@ -408,7 +569,7 @@ function executeMouseAction(devicePath, userId) {
     let updateWindow = false;
 
     if (project.frame.width - device.properties.left < 20) {
-        console.log("larger from right");
+        logger.verbose("larger from right");
 
         project.frame.width += 100;
 
@@ -416,7 +577,7 @@ function executeMouseAction(devicePath, userId) {
     }
 
     if (project.frame.height - device.properties.top < 20) {
-        console.log("larger from bottom");
+        logger.verbose("larger from bottom");
 
         project.frame.height += 100;
 
@@ -433,53 +594,64 @@ function executeMouseAction(devicePath, userId) {
     const buttonToolbar = project.isWithinToolbar(device.properties);
 
     if (buttonToolbar) {
-        if (device.properties.click.left && user.action.status === project.action.status.OUT) {
+        if (device.properties.click.left) {
             finishSelectAction(userId);
 
-            if (buttonToolbar === "LINK_BUTTON") {
-                if (Object.keys(elements.list).length > 1) {
-                    console.log("new link");
+            if (user.action.status === project.action.status.OUT) {
+                if (buttonToolbar === "LINK_BUTTON") {
+                    if (Object.keys(elements.list).length > 1) {
+                        logger.verbose("new link");
 
-                    user.action.type = project.action.type.NEW_LINK;
+                        user.action.type = project.action.type.NEW_LINK;
+                        user.action.status = project.action.status.IN;
+                        user.action.elements = [];
+
+                        packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                    }
+                } else if (buttonToolbar === "PROCESS_BUTTON") {
+                    logger.verbose("new process");
+
+                    user.action.type = project.action.type.NEW_PROCESS;
                     user.action.status = project.action.status.IN;
                     user.action.elements = [];
 
-                    //project.userOutput(io, userId);
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                } else if (buttonToolbar === "OBJECT_BUTTON") {
+                    logger.verbose("new objects");
+
+                    user.action.type = project.action.type.NEW_OBJECT;
+                    user.action.status = project.action.status.IN;
+                    user.action.elements = [];
+
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                } else if (buttonToolbar === "NODE_BUTTON") {
+                    logger.verbose("new node");
+
+                    user.action.type = project.action.type.NEW_NODE_LINK;
+                    user.action.status = project.action.status.IN;
 
                     packet.set(packet.KEYS.ACTION, project.users[userId].action);
                 }
-            } else if (buttonToolbar === "PROCESS_BUTTON") {
-                console.log("new process");
+            }
+            else {
+                if (buttonToolbar === "CANCEL_BUTTON") {
+                    logger.verbose("cancel");
 
-                user.action.type = project.action.type.NEW_PROCESS;
-                user.action.status = project.action.status.IN;
-                user.action.elements = [];
+                    user.action.type = project.action.type.NONE;
+                    user.action.status = project.action.status.OUT;
 
-                //project.userOutput(io, userId);
-
-                packet.set(packet.KEYS.ACTION, project.users[userId].action);
-            } else if (buttonToolbar === "OBJECT_BUTTON") {
-                console.log("new objects");
-
-                user.action.type = project.action.type.NEW_OBJECT;
-                user.action.status = project.action.status.IN;
-                user.action.elements = [];
-
-                //project.userOutput(io, userId);
-
-                packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                    packet.set(packet.KEYS.ACTION, project.users[userId].action);
+                }
             }
         }
     } else {
         const collisionElement = elements.collisions(device.properties);
 
-        //console.log("collisionElement", collisionElement, user.action.type, user.action.status, user.action.elements);
-
         if (device.properties.click.left) {
             if (user.action.type === project.action.type.MOVE && user.action.status === project.action.status.IN) {
                 elements.list[user.action.elements[0]].selected = userId;
 
-                const elementsOutput = elements.move(io, user.action.elements[0],
+                const elementsOutput = elements.move(user.action.elements[0],
                     device.properties.left - user.action.gap.x,
                     device.properties.top - user.action.gap.y);
 
@@ -497,10 +669,10 @@ function executeMouseAction(devicePath, userId) {
 
                 const angle = elements.angleNodeArrow(user.action.elements[0], user.action.elements[1]);
 
-                console.log("angle", angle);
+                //logger.debug("angle", angle);
 
                 if (angle > 88 && angle < 92) {
-                    console.log("perpendicular angle");
+                    //logger.debug("perpendicular angle");
 
                     elements.list[user.action.elements[0]].positions = oldPositions;
                 } else {
@@ -516,7 +688,7 @@ function executeMouseAction(devicePath, userId) {
                             if (user.action.elements[0] !== collisionElement.id) {
                                 user.action.elements.push(collisionElement.id);
 
-                                const elementsOutput = elements.add(io, elements.type.ARROW_AGGREGATION, user.action.elements);
+                                const elementsOutput = elements.add(elements.type.ARROW_AGGREGATION, user.action.elements);
 
                                 packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
@@ -524,6 +696,32 @@ function executeMouseAction(devicePath, userId) {
                             }
                         } else {
                             user.action.elements.push(collisionElement.id);
+                        }
+                    } else if (user.action.type === project.action.type.NEW_NODE_LINK
+                        && user.action.status === project.action.status.IN) {
+                        logger.verbose("new node event");
+
+                        if (elements.list[collisionElement.id].type.indexOf("arrow") >= 0) {
+                            if (!collisionElement.node) {
+                                logger.verbose("new node application");
+
+                                finishSelectAction(userId, collisionElement.id);
+
+                                elements.list[collisionElement.id].positions.splice(collisionElement.after + 1,
+                                    0, collisionElement.position.x);
+                                elements.list[collisionElement.id].positions.splice(collisionElement.after + 2,
+                                    0, collisionElement.position.y);
+
+                                user.action.type = project.action.type.SELECT_NODE_LINK;
+                                user.action.status = project.action.status.IN;
+
+                                user.action.elements[0] = collisionElement.id;
+
+                                packet.set(packet.KEYS.ACTION, project.users[userId].action);
+
+                                packet.set(packet.KEYS.ELEMENT,
+                                    {positions: elements.list[collisionElement.id].positions}, collisionElement.id);
+                            }
                         }
                     } else if (user.action.status === project.action.status.OUT) {
                         if (elements.list[collisionElement.id].type.indexOf("arrow") >= 0) {
@@ -546,23 +744,13 @@ function executeMouseAction(devicePath, userId) {
                             } else {
                                 finishSelectAction(userId, collisionElement.id);
 
-                                user.action.type = project.action.type.NEW_NODE_LINK;
-
+                                user.action.type = project.action.type.SELECT_NODE_LINK;
                                 user.action.status = project.action.status.IN;
-
-                                elements.list[collisionElement.id].positions.splice(collisionElement.after + 1,
-                                    0, collisionElement.position.x);
-                                elements.list[collisionElement.id].positions.splice(collisionElement.after + 2,
-                                    0, collisionElement.position.y);
 
                                 user.action.elements[0] = collisionElement.id;
 
                                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
-
-                                packet.set(packet.KEYS.ELEMENT,
-                                    {positions: elements.list[collisionElement.id].positions}, collisionElement.id);
                             }
-
                         } else {
                             finishSelectAction(userId, collisionElement.id);
 
@@ -582,20 +770,20 @@ function executeMouseAction(devicePath, userId) {
                 } else {
                     if (user.action.type === project.action.type.NEW_OBJECT
                         && user.action.status === project.action.status.IN) {
-                        const elementsOutput = elements.add(io, elements.type.OBJECT, device.properties.left, device.properties.top);
+                        const elementsOutput = elements.add(elements.type.OBJECT, device.properties.left, device.properties.top);
 
                         packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                         user.action.status = project.action.status.OUT;
                     } else if (user.action.type === project.action.type.NEW_PROCESS
                         && user.action.status === project.action.status.IN) {
-                        const elementsOutput = elements.add(io, elements.type.PROCESS, device.properties.left, device.properties.top);
+                        const elementsOutput = elements.add(elements.type.PROCESS, device.properties.left, device.properties.top);
 
                         packet.set(packet.KEYS.ELEMENT, elementsOutput);
 
                         user.action.status = project.action.status.OUT;
                     } else if (user.action.type === project.action.type.SELECT) {
-                        console.log("end select");
+                        logger.verbose("end select");
 
                         finishSelectAction(userId);
                     }
@@ -604,11 +792,12 @@ function executeMouseAction(devicePath, userId) {
         } else if (device.properties.click.right) {
             if (collisionElement !== null) {
                 if (collisionElement.node) {
-                    console.log("delete node");
+                    logger.verbose("delete node");
 
                     user.action.type = project.action.type.DELETE_NODE_LINK;
-
                     user.action.status = project.action.status.IN;
+
+                    user.action.elements[0] = collisionElement.id;
 
                     elements.list[collisionElement.id].positions.splice(collisionElement.node * 2, 2);
 
@@ -617,16 +806,12 @@ function executeMouseAction(devicePath, userId) {
                     packet.set(packet.KEYS.ACTION, project.users[userId].action);
                     packet.set(packet.KEYS.ELEMENT, {positions: positions}, collisionElement.id);
                 } else if (user.action.status === project.action.status.OUT) {
-                    console.log("delete element");
-
-                    console.log("collisionElement", collisionElement);
-
                     user.action.type = project.action.type.DELETE_ELEMENT;
 
                     const element = elements.list[collisionElement.id];
 
                     if (element.type.indexOf("arrow") >= 0) {
-                        console.log("arrow element");
+                        logger.verbose("arrow element");
 
                         let arrowsBeginElement = elements.list[elements.list[collisionElement.id].beginElement].beginArrows;
                         arrowsBeginElement.splice(arrowsBeginElement.indexOf(collisionElement.id), 1);
@@ -635,7 +820,7 @@ function executeMouseAction(devicePath, userId) {
                             elements.list[elements.list[collisionElement.id].endElement].endArrows;
                         arrowsEndElement.splice(arrowsEndElement.indexOf(collisionElement.id), 1);
                     } else {
-                        console.log("object or process element");
+                        logger.verbose("object or process element");
 
                         for (let i = 0; i < element.beginArrows.length; i++) {
                             const arrowId = element.beginArrows[i];
@@ -668,22 +853,16 @@ function executeMouseAction(devicePath, userId) {
             }
         } else {
             if ((user.action.type === project.action.type.MOVE
+                || user.action.type === project.action.type.SELECT_NODE_LINK
                 || user.action.type === project.action.type.MOVE_NODE_LINK
-                || user.action.type === project.action.type.NEW_NODE_LINK
                 || user.action.type === project.action.type.DELETE_NODE_LINK)
                 && user.action.status === project.action.status.IN) {
-                console.log("end move / new node link");
-
-                //finishSelectAction(userId);
-
-                console.log("empty select", project.users);
+                logger.verbose("end move / new node link");
 
                 user.action.type = project.action.type.SELECT;
                 user.action.status = project.action.status.OUT;
 
                 elements.list[user.action.elements[0]].selected = userId;
-
-                console.log("select", project.users);
 
                 packet.set(packet.KEYS.ACTION, project.users[userId].action);
                 packet.set(packet.KEYS.ELEMENT, {selected: userId}, user.action.elements[0]);
@@ -693,11 +872,11 @@ function executeMouseAction(devicePath, userId) {
                 let updateWindow = false;
 
                 if (element.x < 20) {
-                    console.log("larger from left");
+                    logger.verbose("larger from left");
                 }
 
                 if (project.frame.width - (element.x + element.width) < 20) {
-                    console.log("larger from right");
+                    logger.verbose("larger from right");
 
                     project.frame.width += 100;
 
@@ -705,11 +884,11 @@ function executeMouseAction(devicePath, userId) {
                 }
 
                 if (element.y < 20) {
-                    console.log("larger from top");
+                    logger.verbose("larger from top");
                 }
 
                 if (project.frame.height - (element.y + element.height) < 20) {
-                    console.log("larger from bottom");
+                    logger.verbose("larger from bottom");
 
                     project.frame.height += 100;
 
@@ -814,24 +993,70 @@ function executeKeyboardAction(devicePath, userId) {
                 element.width = elements.elementPadding;
             }
 
-            packet.set(packet.KEYS.ELEMENT, {
+            const elementsToUpdate = elements.attachedArrows(user.action.elements[0]);
+
+            elementsToUpdate[user.action.elements[0]] = {
                 text: element.text,
                 width: element.width,
                 height: element.height
-            }, user.action.elements[0]);
+            };
+
+            packet.set(packet.KEYS.ELEMENT, elementsToUpdate);
         } else if (element.type.indexOf("arrow") >= 0) {
-            console.log("arrow");
+            if (device.properties.keyBuffer.indexOf("LEFT") >= 0
+                || device.properties.keyBuffer.indexOf("RIGHT") >= 0) {
+                logger.debug("it's an arrow!");
 
-            if (element.beginElement.type === elements.type.OBJECT
-                && element.endElement.type === elements.type.OBJECT) {
-                if (element.type === elements.type.ARROW_AGGREGATION) {
-                    element.type = elements.type.ARROW_EXHIBITION;
-                } else {
-                    element.type = elements.type.ARROW_AGGREGATION;
-                }
+                //if (elements.list[element.beginElement].type === elements.type.OBJECT
+                    //&& elements.list[element.endElement].type === elements.type.OBJECT) {
+                    if (element.type === elements.type.ARROW_CHARACTERIZATION) {
+                        element.type = elements.type.ARROW_CHARACTERIZATION_INVERT;
+                    }
+                    else if (element.type === elements.type.ARROW_CHARACTERIZATION_INVERT) {
+                        element.type = elements.type.ARROW_GENERALIZATION;
+                    }
+                    else if (element.type === elements.type.ARROW_GENERALIZATION) {
+                        element.type = elements.type.ARROW_GENERALIZATION_INVERT;
+                    }
+                    else if (element.type === elements.type.ARROW_GENERALIZATION_INVERT) {
+                        element.type = elements.type.ARROW_AGGREGATION;
+                    }
+                    else if (element.type === elements.type.ARROW_AGGREGATION) {
+                        element.type = elements.type.ARROW_AGGREGATION_INVERT;
+                    }
+                    else if (element.type === elements.type.ARROW_AGGREGATION_INVERT) {
+                        element.type = elements.type.ARROW_RELATIONSHIP;
+                    }
+                    else if (element.type === elements.type.ARROW_RELATIONSHIP) {
+                        element.type = elements.type.ARROW_INSTRUMENT;
+                    }
+                    else if (element.type === elements.type.ARROW_INSTRUMENT) {
+                        element.type = elements.type.ARROW_INSTRUMENT_INVERT;
+                    }
+                    else if (element.type === elements.type.ARROW_INSTRUMENT_INVERT) {
+                        element.type = elements.type.ARROW_EFFECT;
+                    }
+                    else if (element.type === elements.type.ARROW_EFFECT) {
+                        element.type = elements.type.ARROW_EFFECT_INVERT;
+                    }
+                    else if (element.type === elements.type.ARROW_EFFECT_INVERT) {
+                        element.type = elements.type.ARROW_CONSUMPTION;
+                    }
+                    else if (element.type === elements.type.ARROW_CONSUMPTION) {
+                        element.type = elements.type.ARROW_AGENT;
+                    }
+                    else if (element.type === elements.type.ARROW_AGENT) {
+                        element.type = elements.type.ARROW_AGENT_INVERT;
+                    }
+                    else {
+                        element.type = elements.type.ARROW_CHARACTERIZATION;
+                    }
+
+                    logger.debug("element type:" + element.type);
+                //}
+
+                packet.set(packet.KEYS.ELEMENT, {type: element.type}, user.action.elements[0]);
             }
-
-            packet.set(packet.KEYS.ELEMENT, {type: element.type}, user.action.elements[0]);
         }
     }
 

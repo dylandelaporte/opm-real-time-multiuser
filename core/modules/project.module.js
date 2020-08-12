@@ -2,8 +2,8 @@ const fs = require("fs");
 
 const project = {
     frame: {
-        width: 500,
-        height: 500,
+        width: 1500,
+        height: 1500,
         scrollWidth: 0,
         scrollHeight: 0
     },
@@ -26,8 +26,10 @@ const project = {
             DELETE_ELEMENT: "delete_element",
             NEW_LINK: "new_link",
             NEW_NODE_LINK: "new_node_link",
+            SELECT_NODE_LINK: "select_node_link",
             MOVE_NODE_LINK: "move_node_link",
-            DELETE_NODE_LINK: "delete_node_link"
+            DELETE_NODE_LINK: "delete_node_link",
+            CANCEL_ACTION: "cancel_action"
         },
         status: {
             IN: "in",
@@ -38,18 +40,29 @@ const project = {
     toolbar: {
         "OBJECT_BUTTON": {x: 5, y: 5, width: 100, height: 25, text: "New object"},
         "PROCESS_BUTTON": {x: 110, y: 5, width: 120, height: 25, text: "New process"},
-        "LINK_BUTTON": {x: 235, y: 5, width: 80, height: 25, text: "New link"}
+        "LINK_BUTTON": {x: 235, y: 5, width: 80, height: 25, text: "New link"},
+        "NODE_BUTTON": {x: 320, y: 5, width: 95, height: 25, text: "New node"},
+        "CANCEL_BUTTON": {x: 420, y: 5, width: 70, height: 25, text: "Cancel"}
     },
     toolbarDimensions: {
         x: 5,
         y: 5,
-        width: 315,
+        width: 490,
         height: 30
     },
     currentName: "",
+    controls: {
+        local: true,
+        autoSetup: true
+    },
     autosave: true,
     path: "../projects/",
-    logs: []
+    logs: [],
+    logger: null
+};
+
+project.setLogger = function (logger) {
+    this.logger = logger;
 };
 
 project.setToolbar = function (frame) {
@@ -107,6 +120,7 @@ project.setUser = function (data) {
 project.addUser = function (id) {
     if (!project.users[id]) {
         project.users[id] = {
+            lastUpdate: new Date(),
             action: {
                 type: project.action.type.HOVER,
                 status: project.action.status.OUT,
@@ -124,8 +138,6 @@ project.deleteUser = function (id) {
         project.deleteMouseUser(id);
         project.deleteKeyboardUser(id);
     }
-
-    console.log(project.users, project.mouseAssociations, project.keyboardAssociations);
 };
 
 project.deleteMouseUser = function (id) {
@@ -181,13 +193,15 @@ project.getGeneral = function () {
         mouseAssociations: project.mouseAssociations,
         keyboardAssociations: project.keyboardAssociations,
         currentName: project.currentName,
-        autosave: project.autosave
+        autosave: project.autosave,
+        controls: {
+            local: project.controls.local,
+            autoSetup: project.controls.autoSetup
+        }
     };
 };
 
 project.listProjects = async function () {
-    console.log("listProjects");
-
     try {
         const files = fs.readdirSync(__dirname + "/" + project.path);
 
@@ -237,7 +251,7 @@ project.newProject = async function (name, elements) {
 };
 
 project.loadProject = async function (name, elements) {
-    console.log("loadProject");
+    project.logger.verbose("LoadProject");
 
     if (!project.validName(name)) {
         throw "The project name is not valid, please update it.";
@@ -250,7 +264,7 @@ project.loadProject = async function (name, elements) {
             const data = fs.readFileSync(projectFilePath, "utf8");
             const content = JSON.parse(data);
 
-            console.log("content", content);
+            project.logger.verbose("LoadProject", content);
 
             if (content.frame
                 && content.users
@@ -282,7 +296,7 @@ project.loadProject = async function (name, elements) {
 
                 elements.nextId = nextId + 1;
 
-                console.log("nextId", elements.nextId);
+                project.logger.verbose("LoadProject", "nextId: " + elements.nextId);
             }
             else {
                 throw "Missing elements in the project.";
@@ -297,8 +311,6 @@ project.loadProject = async function (name, elements) {
 };
 
 project.saveProject = async function (name, elements) {
-    console.log("saveProject");
-
     if (!project.validName(name)) {
         throw "The project name is not valid, please update it.";
     }
@@ -323,16 +335,16 @@ project.saveProject = async function (name, elements) {
 };
 
 project.executeAutosave = async function (elements) {
-    console.log("autosave", project.autosave);
+    project.logger.verbose("Autosave" + ", enabled: " + project.autosave + ", project name: " + project.currentName);
 
     if (project.autosave && project.validName(project.currentName)) {
         try {
             await project.saveProject(project.currentName, elements);
             await project.saveLog(project.currentName, project.logs);
 
-            console.log("done!");
+            project.logger.info("Autosave", "done!");
         } catch (e) {
-            console.error(e);
+            project.logger.error("Autosave", e);
         }
     }
 };

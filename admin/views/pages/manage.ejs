@@ -1,0 +1,56 @@
+<%- include("../templates/header.ejs") %>
+
+<div class="container">
+    <h1 class="mt-5">Instance <%= instance.title %> <a href="/" class="btn btn-link">Go back</a></h1>
+    <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+    <h4>Status</h4>
+    <% if (status.services) {
+        for (var i = 0; i < status.services.length; i++) { %>
+            <span><%= status.services[i].name %>:
+                <% if (status.services[i].state === "Running") { %>
+                    <span class="badge badge-success">Running</span>
+                <% } else if (status.services[i].state === "Preparing" || status.services[i].state === "Starting") { %>
+                    <span class="badge badge-info">Starting</span>
+                <% } else { %>
+                    <span class="badge badge-danger"><%= status.services[i].state %></span>
+                <% } %>
+            </span>
+        <% }
+    } else { %>
+        <span>Services: <span class="badge badge-light">Ready to start</span></span>
+    <% } %>
+    <h4>Actions</h4>
+    <% if (status.services) { %>
+        <a href="/manage/<%= instance.id %>/stop" class="btn btn-outline-danger">Stop</a>
+        <a href="#" onclick="this.href = '/view/<%= instance.id %>/index.html?server_url='
+                + 'ws://' + location.host + '/<%= instance.id %>&managed_instance=true'"
+           class="btn btn-outline-primary">Connect</a>
+        <a href="/view/<%= instance.id %>/config.html" class="btn btn-outline-secondary">Configure</a>
+        <a href="/view/<%= instance.id %>/analyze.html" class="btn btn-outline-secondary">Analyze</a>
+        <a href="/view/<%= instance.id %>/live.html" class="btn btn-outline-secondary">Live history</a>
+    <% } else { %>
+        <a href="/manage/<%= instance.id %>/start" class="btn btn-primary">Start</a>
+        <a href="/manage/<%= instance.id %>/clear" class="btn btn-outline-danger">Clear data</a>
+        <a href="/manage/<%= instance.id %>/delete" class="btn btn-outline-danger">Delete</a>
+    <% } %>
+    <% if (logs.services) { %>
+        <h4>Logs</h4>
+        <% for (var i = 0; i < logs.services.length; i++) { %>
+            <span><%= logs.services[i].name %></span>
+            <div class="well"><%= logs.services[i].logs %></div>
+        <% }
+    } %>
+</div>
+
+<script type="application/javascript">
+    setInterval(function () {
+        location.href = location.pathname;
+    }, 25000)
+</script>
+
+<%- include("../templates/footer.ejs") %>

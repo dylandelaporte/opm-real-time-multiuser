@@ -1,0 +1,63 @@
+<%- include("../templates/header.ejs") %>
+
+<div class="container">
+    <h1 class="mt-5">Instances
+        <a href="/add" class="btn btn-outline-primary">Add</a>
+    </h1>
+    <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+    <% if (instances.length > 0) { %>
+        <table class="table mt-2">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <% for (var i = 0; i < instances.length; i++) { %>
+                <tr>
+                    <td>
+                        <%= instances[i].title %>
+                    </td>
+                    <td>
+                        <% if (instances[i].state.services) {
+                            for (var j = 0; j < instances[i].state.services.length; j++) {
+                                if (instances[i].state.services[j].state === "Running") { %>
+                                    <span class="badge badge-success">Running</span>
+                                <% } else if (instances[i].state.services[j].state === "Preparing"
+                                        || instances[i].state.services[j].state === "Starting") { %>
+                                    <span class="badge badge-info">Starting</span>
+                                <% } else { %>
+                                    <span class="badge badge-danger"><%= instances[i].state.services[j].state %></span>
+                                <% }
+                            }
+                        } else { %>
+                            <span class="badge badge-light">Ready to start</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <a href="/view/<%= instances[i].id %>" class="btn btn-link">Connect</a>
+                        <a href="/manage/<%= instances[i].id %>" class="btn btn-link">Manage</a>
+                    </td>
+                </tr>
+            <% } %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <span>There are not instances yet.</span>
+    <% } %>
+</div>
+
+<script type="application/javascript">
+    setInterval(function () {
+        location.href = location.pathname;
+    }, 25000)
+</script>
+
+<%- include("../templates/footer.ejs") %>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+
+    <link href="css/connect.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div id="connection" class="content" style="display: none;">
+        <h1>Server connection</h1>
+        <form id="connection-form">
+            <div class="form-row align-items-center">
+                <div class="col-10">
+                    <input type="text" id="server-url" name="server-url" class="form-control form-control-lg mb-2"
+                           placeholder="Server Url">
+                </div>
+                <div class="col-2">
+                    <button type="submit" id="connect_button" name="connect_button" class="btn btn-primary btn-lg mb-2">Attach</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div id="username" class="content" style="display: none;">
+        <h1 class="mb-5">Let others know who you are!</h1>
+        <div id="username-network-error" class="content" style="display: none;">
+            <div class="alert alert-warning">Error! Unable to connect to the server.</div>
+        </div>
+        <div id="username-content" class="row">
+            <div class="col-md-12">
+                <h5>Create a new user</h5>
+            </div>
+            <div class="col-md-6 offset-md-3">
+                <form id="username-form" class="mb-5">
+                    <div class="form-row align-items-center">
+                        <div class="col-10">
+                            <input type="text" name="username" class="form-control form-control-lg mb-2"
+                                   placeholder="Username">
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" name="connect_button" class="btn btn-primary btn-lg mb-2">Connect</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-12">
+                <h5>Select an existing user</h5>
+            </div>
+            <div class="col-md-6 offset-md-3">
+                <div class="card">
+                    <ul id="username-list" class="list-group list-group-flush"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="menu" class="content" style="display: none;">
+        <h1 style="margin-bottom: 0;">Hello <span id="username-text">USERNAME</span>!</h1>
+        <span class="mb-5">Connected to <span id="server-url-text">SERVER</span></span>
+        <hr>
+        <div id="connection-alert" class="alert alert-warning">Unable to connect to the server, please check your
+            connection.
+        </div>
+        <div class="row">
+            <div class="col-md-4 offset-md-4">
+                <div id="connected-to-server-actions-div">
+                    <a href="edition.html" class="btn btn-primary btn-lg btn-block">Go to the editor</a>
+                    <a href="config.html" class="btn btn-outline-secondary btn-lg btn-block">Configuration</a>
+                </div>
+                <button type="button" id="change-username-button" class="btn btn-outline-dark btn-lg btn-block">Change username</button>
+                <button type="button" id="disconnect-button" class="btn btn-outline-dark btn-lg btn-block" style="display: none;">Disconnect</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/notify.min.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/connect.js"></script>
+</body>
+</html>

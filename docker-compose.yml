@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  web:
+    image: opmmodel-admin:latest
+    environment:
+      DATA_DIR: ${DATA_DIR}
+    port:
+      - 80:3000
+    volumes:
+      - ${DATA_DIR}:/app/data

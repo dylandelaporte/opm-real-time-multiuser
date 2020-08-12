@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  core:
+    image: dyde/opre-software-core:latest
+    ports:
+      - {CORE_PORT}:3000
+      #- "5000:5000"
+    volumes:
+      - {DIR}:/app/projects
+  gui:
+    image: dyde/opre-software-gui:latest
+    ports:
+      - {GUI_PORT}:80

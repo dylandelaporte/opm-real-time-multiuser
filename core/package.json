@@ -4,14 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "sudo node index.js",
-    "test": "sudo node index-core.js"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "fs": "0.0.1-security",
-    "node-hid": "^1.1.0",
-    "socket.io": "^2.3.0"
+    "ws": "^7.3.1",
+    "winston": "^3.2.1",
+    "winston-console-format": "^1.0.5"
   }
 }
