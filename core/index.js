@@ -7,6 +7,7 @@ const devices = require("./modules/devices.module");
 const elements = require("./modules/elements.module");
 
 const project = require("./modules/project.module");
+const view = require("./modules/view.module");
 
 const logger = createLogger({
     level: "silly",
@@ -128,6 +129,8 @@ function autosave() {
 
     for (let user in project.users) {
         if (project.users[user].lastUpdate < currentDate) {
+            project.users[user].lastUpdate = new Date();
+
             logger.info("User " + user + " was not active in the last 5 minutes, sending disconnect event.");
 
             packet.clear();
@@ -153,7 +156,8 @@ let packet = {
         TOOLBAR: "t",
         PROJECT: "p",
         SUCCESS: "s",
-        DISCONNECT: "d",
+        DISCONNECT: "di",
+        VIEW: "v",
         ERROR: "er"
     },
     clear: function (id) {
@@ -271,6 +275,9 @@ coreSocketServer.on("connection", client => {
                 case "autosave.project":
                     autosaveProject(data);
                     break;
+                case "delete.project":
+                    deleteProject(data);
+                    break;
                 case "controls.local":
                     controlsLocal(data);
                     break;
@@ -294,6 +301,24 @@ coreSocketServer.on("connection", client => {
                     break;
                 case "disconnect":
                     disconnect(data);
+                    break;
+                case "view.info":
+                    viewInfo();
+                    break;
+                case "view.select.file":
+                    viewSelectFile(data);
+                    break;
+                case "view.start.analysis":
+                    viewStartAnalysis();
+                    break;
+                case "view.stop.analysis":
+                    viewStopAnalysis();
+                    break;
+                case "view.start":
+                    viewStart(data);
+                    break;
+                case "view.stop":
+                    viewStop();
                     break;
             }
         }
@@ -364,6 +389,8 @@ coreSocketServer.on("connection", client => {
         try {
             await project.newProject(data.name, elements);
 
+            devices.setWindowSize({width: 1500, height: 1500});
+
             packet.set(packet.KEYS.SUCCESS, "New project created!");
             packet.set(packet.KEYS.GENERAL, project.getGeneral());
         } catch (e) {
@@ -410,9 +437,9 @@ coreSocketServer.on("connection", client => {
 
             packet.set(packet.KEYS.PROJECT, projects);
         } catch (e) {
-            console.error(e);
+            logger.error(e);
 
-            packet.set(packet.KEYS.ERROR, e);
+            packet.set(packet.KEYS.ERROR, e.message);
         }
 
         packet.send(client);
@@ -424,6 +451,28 @@ coreSocketServer.on("connection", client => {
         project.autosave = !!data.autosave;
 
         sendGeneral();
+    };
+
+    const deleteProject = async data => {
+        logger.info("Client delete.project: ", data);
+
+        packet.clear();
+
+        try {
+            await project.deleteProject(data.name);
+
+            packet.set(packet.KEYS.SUCCESS, "Project deleted!");
+
+            const projects = await project.listProjects();
+
+            packet.set(packet.KEYS.PROJECT, projects);
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
     };
 
     const controlsLocal = data => {
@@ -482,6 +531,79 @@ coreSocketServer.on("connection", client => {
         packet.clear();
         packet.set(packet.KEYS.DISCONNECT, {userId: data.userId});
     }
+
+    const viewInfo = () => {
+        packet.clear();
+        packet.set(packet.KEYS.VIEW, view.getInfo());
+        packet.send(client);
+    };
+
+    const viewSelectFile = async data => {
+        packet.clear();
+
+        try {
+            await view.selectFile(data.fileName);
+
+            packet.set(packet.KEYS.SUCCESS, "Project selected!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
+    }
+
+    const viewStartAnalysis = () => {
+        packet.clear();
+
+        try {
+            view.startAnalysis();
+
+            packet.set(packet.KEYS.SUCCESS, "Analysis started!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
+    };
+
+    const viewStopAnalysis = () => {
+        view.stopAnalysis();
+    };
+
+    const viewStart = data => {
+        packet.clear();
+
+        try {
+            view.start(data.speed, function (error, data) {
+                packet.clear();
+
+                if (error) {
+                    packet.set(packet.KEYS.ERROR, error);
+                }
+                else {
+                    packet.set(packet.KEYS.VIEW, data);
+                }
+
+                packet.send(client);
+            });
+
+            packet.set(packet.KEYS.SUCCESS, "View started!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
+    };
+
+    const viewStop = () => {
+        view.stop();
+    };
 
     client.onclose = () => {
         logger.info("Client disconnection");

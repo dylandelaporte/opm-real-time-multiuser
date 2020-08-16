@@ -231,11 +231,11 @@ project.validName = function (name) {
 
 project.newProject = async function (name, elements) {
     if (!project.validName(name)) {
-        return Promise.reject("The project name is not valid, please update it.");
+        throw new Error("The project name is not valid, please update it.");
     }
 
-    project.frame.width = 500;
-    project.frame.height = 500;
+    project.frame.width = 1500;
+    project.frame.height = 1500;
     project.frame.scrollWidth = 0;
     project.frame.scrollHeight = 0;
 
@@ -346,6 +346,23 @@ project.executeAutosave = async function (elements) {
         } catch (e) {
             project.logger.error("Autosave", e);
         }
+    }
+};
+
+project.deleteProject = async function (name) {
+    if (name === project.currentName) {
+        throw new Error("This project is current opened in the editor.");
+    }
+
+    const projectFilePath = __dirname + "/" + project.path + name + ".json";
+    const logFilePath = __dirname + "/" + project.path + name + "-log.json";
+
+    if (fs.existsSync(projectFilePath)) {
+        fs.unlinkSync(projectFilePath);
+    }
+
+    if (fs.existsSync(logFilePath)) {
+        fs.unlinkSync(logFilePath);
     }
 };
 

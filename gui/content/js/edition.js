@@ -34,7 +34,7 @@ const mouses = {
         mouseDiv.classList.add("mouse-pointer", "fas", "fa-dot-circle");
         mouseDiv.style.color = getColorFromId(id);
 
-        mouseDiv.id = "pointer-" + id;
+        mouseDiv.id = "pointer-" + hashCode(id);
 
         document.body.appendChild(mouseDiv);
 
@@ -72,10 +72,12 @@ const mouses = {
     },
     delete: function (id) {
         if (mouses.list[id]) {
+            document.body.removeChild(mouses.list[id]);
+
             delete mouses.list[id];
 
             const users = document.getElementById("users");
-            users.removeChild(document.getElementById("user-" + id));
+            users.removeChild(document.getElementById("user-" + hashCode(id)));
         }
     }
 };
@@ -842,10 +844,10 @@ function connect(server_url, username) {
     };
 
     socket.onmessage = function (data) {
-        console.log("data", data);
-
         try {
             data = JSON.parse(data.data);
+
+            console.log("data", data);
 
             if (data.g) {
                 if (data.g.mode === 0) {
@@ -897,6 +899,10 @@ function connect(server_url, username) {
                 for (let i = 0; i < elementIds.length; i++) {
                     elements.update(elementIds[i], data.e[elementIds[i]]);
                 }
+            }
+
+            if (data.di) {
+                mouses.delete(data.di.userId);
             }
         }
         catch (e) {

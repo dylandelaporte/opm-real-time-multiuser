@@ -1,9 +1,6 @@
 .idea
 
+admin/node_modules
 core/node_modules
-core/package.json
-core/package-lock.json
-
 device/node_modules
-device/package.json
-device/package-lock.json
+

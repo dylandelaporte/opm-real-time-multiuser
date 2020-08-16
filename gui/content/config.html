@@ -34,12 +34,16 @@
                     <form id="add-user-form">
                         <div class="form-row">
                             <div class="col">
-                                <input type="text" name="user-id" class="form-control" placeholder="User id">
+                                <div class="input-group mb-3">
+                                    <input type="text" name="user-id" class="form-control" placeholder="Username">
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-primary">Add</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col">
-                                <button type="submit" class="btn btn-primary">Add user</button>
                                 <button type="button" id="refresh-device-button" class="btn btn-outline-secondary">
-                                    Refresh device
+                                    Refresh devices
                                 </button>
                             </div>
                         </div>
@@ -48,7 +52,9 @@
                 <hr>
                 <div class="card-body">
                     <h5 class="card-title">Local controls</h5>
-                    <p>Enable local controls to edit with mouse and keyboard on a computer</p>
+                    <p>User will be able to use the editor directly from the web browser.
+                        Disabling auto-setup means you will have to manually add user controls into the configuration.
+                    </p>
                     <div class="btn-group">
                         <button id="local-controls-button" class="btn btn-outline-primary"></button>
                         <button id="controls-autosetup-button" class="btn btn-outline-primary"></button>
@@ -58,19 +64,23 @@
             <div id="current-project" class="card">
                 <div class="card-body">
                     <h5 class="card-title">Current project</h5>
+                    <p>An empty project name means the current project is a draft.</p>
                     <form>
                         <div class="form-row">
                             <div class="col">
-                                <input type="text" id="project-name" name="project-name" class="form-control"
-                                       placeholder="Project name">
+                                <div class="input-group mb-3">
+                                    <input type="text" id="project-name" name="project-name" class="form-control"
+                                           placeholder="Project name">
+                                    <div class="input-group-append">
+                                        <button type="button" id="save-project-button" class="btn btn-primary">Save
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col">
-                                <button type="button" id="save-project-button" class="btn btn-primary">Save</button>
-                                <button type="button" id="new-project-button" class="btn btn-outline-primary">New
+                                <button type="button" id="new-project-button" class="btn btn-outline-primary">Reset
                                 </button>
-                                <button type="button" id="autosave-button" class="btn btn-outline-info">Disable
-                                    autosave
-                                </button>
+                                <button type="button" id="autosave-button" class="btn btn-outline-info"></button>
                             </div>
                         </div>
                     </form>
@@ -78,8 +88,8 @@
             </div>
             <div id="load-project" class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Load a project</h5>
-                    <p>When opening a project the previous project has to be saved too.</p>
+                    <h5 class="card-title">Projects</h5>
+                    <p>Be sure to save the current project before opening another project.</p>
                 </div>
                 <ul id="project-list" class="list-group list-group-flush"></ul>
             </div>

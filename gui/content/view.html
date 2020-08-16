@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/all.min.css">
+
+    <link rel="stylesheet" href="css/view.css">
+</head>
+<body>
+<div id="menu">
+    <a href="index.html" id="menu-button"><i class="fas fa-bars"></i></a>
+</div>
+<div id="toolbar">
+    <button type="button" class="btn btn-primary">Start</button>
+</div>
+<div id="setting-mode-error" class="container" style="display: none;">
+    <div class="alert alert-warning">The server is in configuration mode, please wait settings are done
+        before editing the model.
+    </div>
+</div>
+<div id="container"></div>
+
+<script src="js/konva.min.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/view.js"></script>
+</body>
+</html>

@@ -87,11 +87,11 @@ function loadSettings(socket) {
                 currentControlsAutoSetup = data.g.controls.autoSetup;
 
                 controlsAutoSetupButton.innerText = currentControlsAutoSetup ?
-                    "Disable auto setup" : "Enable auto setup";
+                    "Disable auto-setup" : "Enable auto^setup";
 
                 currentAutosave = data.g.autosave;
 
-                autosaveButton.innerText = currentAutosave ? "Disable autosave" : "Enable autosave";
+                autosaveButton.innerText = currentAutosave ? "Disable auto-save" : "Enable auto-save";
             }
 
             if (data.d) {
@@ -106,6 +106,8 @@ function loadSettings(socket) {
 
                 loadProjectList(data.p, function (projectName) {
                     socket.send(JSON.stringify({type: "load.project", name: projectName}));
+                }, function (projectName) {
+                    socket.send(JSON.stringify({type: "delete.project", name: projectName}));
                 });
             }
 
@@ -279,7 +281,7 @@ function animateCSS(element, animationName, callback) {
     }
 }
 
-function loadProjectList(list, callbackOpen) {
+function loadProjectList(list, callbackOpen, callbackDelete) {
     const projectList = document.getElementById("project-list");
     projectList.innerHTML = "";
 
@@ -288,13 +290,18 @@ function loadProjectList(list, callbackOpen) {
             const projectElement = document.createElement("li");
             projectElement.classList.add("list-group-item");
 
-            projectElement.innerHTML = "<button type='button' id='open-project-" + list[i] + "-button'" +
-                " class='btn btn-link'>" + list[i] + "</button></form>";
+            projectElement.innerHTML = list[i] + " <button type='button' id='open-project-" + list[i] + "-button'" +
+                " class='btn btn-outline-primary btn-sm'>Open</button> <button type='button' " +
+                "id='delete-project-" + list[i] + "-button' class='btn btn-outline-danger btn-sm'>Delete</button>";
 
             projectList.appendChild(projectElement);
 
             document.getElementById("open-project-" + list[i] + "-button").onclick = function () {
                 callbackOpen(list[i]);
+            };
+
+            document.getElementById("delete-project-" + list[i] + "-button").onclick = function () {
+                callbackDelete(list[i]);
             };
         })(i);
     }
