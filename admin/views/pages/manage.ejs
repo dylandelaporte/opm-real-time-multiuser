@@ -30,9 +30,9 @@
         <a href="#" onclick="this.href = '/view/<%= instance.id %>/index.html?server_url='
                 + 'ws://' + location.host + '/<%= instance.id %>&managed_instance=true'"
            class="btn btn-outline-primary">Connect</a>
-        <a href="/view/<%= instance.id %>/config.html" class="btn btn-outline-secondary">Configure</a>
-        <a href="/view/<%= instance.id %>/analyze.html" class="btn btn-outline-secondary">Analyze</a>
-        <a href="/view/<%= instance.id %>/live.html" class="btn btn-outline-secondary">Live history</a>
+        <a href="/view/<%= instance.id %>/analyze.html" class="btn btn-outline-secondary">Interaction analysis</a>
+        <a href="/view/<%= instance.id %>/activity.html" class="btn btn-outline-secondary">Review activity</a>
+        <a href="/view/<%= instance.id %>/config.html" class="btn btn-outline-dark">Configure</a>
     <% } else { %>
         <a href="/manage/<%= instance.id %>/start" class="btn btn-primary">Start</a>
         <a href="/manage/<%= instance.id %>/clear" class="btn btn-outline-danger">Clear data</a>
@@ -41,8 +41,12 @@
     <% if (logs.services) { %>
         <h4>Logs</h4>
         <% for (var i = 0; i < logs.services.length; i++) { %>
-            <span><%= logs.services[i].name %></span>
-            <div class="well"><%= logs.services[i].logs %></div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><%= logs.services[i].name %></h5>
+                    <p class="card-text"><%- logs.services[i].logs %></p>
+                </div>
+            </div>
         <% }
     } %>
 </div>

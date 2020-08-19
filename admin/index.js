@@ -8,6 +8,9 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 const httpProxy = require('http-proxy');
 
+const AU = require('ansi_up');
+const ansi_up = new AU.default;
+
 const app = express();
 const port = 3030;
 
@@ -60,6 +63,13 @@ async function renderManage(req, res) {
         const status = await getStatus(req.params.id);
         const logs = await getLogs(req.params.id);
 
+        if (logs.services) {
+            for (let service of logs.services) {
+                service.logs = ansi_up.ansi_to_html(service.logs);
+                service.logs = service.logs.replace(/\n/g, "</br>");
+            }
+        }
+
         res.render("pages/manage", {
             success: req.query.success,
             error: req.query.error,
@@ -68,6 +78,7 @@ async function renderManage(req, res) {
             logs: logs
         });
     } catch (e) {
+        console.log(e);
         renderError(res, 404, "The instance does not exists.", true);
     }
 }

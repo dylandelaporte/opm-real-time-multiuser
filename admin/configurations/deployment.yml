@@ -4,7 +4,6 @@ services:
     image: dyde/opre-software-core:latest
     ports:
       - {CORE_PORT}:3000
-      #- "5000:5000"
     volumes:
       - {DIR}:/app/projects
   gui:

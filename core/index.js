@@ -157,6 +157,7 @@ let packet = {
         PROJECT: "p",
         SUCCESS: "s",
         DISCONNECT: "di",
+        ANALYSIS: "an",
         VIEW: "v",
         ERROR: "er"
     },
@@ -313,6 +314,9 @@ coreSocketServer.on("connection", client => {
                     break;
                 case "view.stop.analysis":
                     viewStopAnalysis();
+                    break;
+                case "view.get.analysis":
+                    viewGetAnalysis();
                     break;
                 case "view.start":
                     viewStart(data);
@@ -558,7 +562,18 @@ coreSocketServer.on("connection", client => {
         packet.clear();
 
         try {
-            view.startAnalysis();
+            view.startAnalysis(function (error, progress) {
+                packet.clear();
+
+                if (error) {
+                    packet.set(packet.KEYS.ERROR, error);
+                }
+                else {
+                    packet.set(packet.KEYS.ANALYSIS, {progress: progress});
+                }
+
+                packet.send();
+            });
 
             packet.set(packet.KEYS.SUCCESS, "Analysis started!");
         } catch (e) {
@@ -571,7 +586,33 @@ coreSocketServer.on("connection", client => {
     };
 
     const viewStopAnalysis = () => {
-        view.stopAnalysis();
+        packet.clear();
+
+        try {
+            view.stopAnalysis();
+
+            packet.set(packet.KEYS.SUCCESS, "Analysis stopped!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
+    };
+
+    const viewGetAnalysis = async () => {
+        packet.clear();
+
+        try {
+            packet.set(packet.KEYS.ANALYSIS, {data: await view.getAnalysis()});
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
     };
 
     const viewStart = data => {

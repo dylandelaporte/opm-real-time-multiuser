@@ -1,5 +1,6 @@
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
+const fs = require("fs");
 const sqlite3 = require('sqlite3').verbose();
 
 const view = {
@@ -22,6 +23,8 @@ view.getInfo = function () {
         info.file = false;
     }
 
+    info.file.analysisFile = fs.existsSync('projects/' + view.file.name + '-view.db');
+
     return info;
 }
 
@@ -34,7 +37,7 @@ view.selectFile = async function (fileName) {
     const countLines = await view.getCountLines(fileName);
 
     if (countLines < 1) {
-        throw new Error("This file does not exists.");
+        throw new Error("The log file does not exists.");
     }
 
     view.file.name = fileName;
@@ -42,7 +45,7 @@ view.selectFile = async function (fileName) {
     view.file.countLines = countLines;
 }
 
-view.startAnalysis = function () {
+view.startAnalysis = function (callback) {
     if (view.file.name === null) {
         throw new Error("There is no file loaded.");
     }
@@ -59,42 +62,20 @@ view.startAnalysis = function () {
     //10 second structure
     let limitDate = null;
 
-    let userData = {
-        "user": {
-            viewer: {
-                countInteractions: 0,
-                countMouseMovementsOverABlock: 0,
-                mouseDistance: 0,
-                mouseMovementsNotFollowedByEdition: 0
-            },
-            editor: {
-                blockAddition: 0,
-                blockDeletion: 0,
-                arrowAddition: 0,
-                arrowDeletion: 0,
-                firstTextEdit: 0,
-                ratioMouseMovementsOverABlockOnMouseMovement: 0
-            },
-            reviewer: {
-                textUpdateOfNonCreateBlocks: 0,
-                arrowNodeAddition: 0,
-                arrowNodeDeletion: 0,
-                movementOfNonCreatedBlocks: 0
-            }
-        }
-    };
+    let userData = {};
+    let userTemporaryData = {};
 
     async function process() {
         const db = await view.setupDB(view.file.name);
+
+        let previousProgress = 0;
 
         while (view.file.currentLine < view.file.countLines) {
             if (!view.analyzing) {
                 break;
             }
 
-            view.analyzingProgress = (view.file.currentLine / view.file.countLines) * 100;
-
-            console.log("progress: " + view.analyzingProgress);
+            view.analyzingProgress = parseInt((view.file.currentLine / view.file.countLines) * 100);
 
             try {
                 //get data
@@ -106,36 +87,52 @@ view.startAnalysis = function () {
 
                 if (limitDate === null || currentDate > limitDate) {
                     limitDate = new Date(currentDate.getTime() + 10000);
-                    userData = {};
+
                     save = true;
 
                     console.log("refreshDate: " + limitDate);
                 }
 
                 if (content.id) {
+                    //console.log("user " + content.id + " interaction");
+
                     if (!userData[content.id]) {
                         userData[content.id] = {
-                            last: null,
                             "viewer.countInteractions": 0,
                             "viewer.countMouseMovementsOverABlock": 0,
                             "viewer.mouseDistance": 0,
-                            "viewer.mouseMovementsNotFollowedByEdition": 0
+                            "viewer.mouseMovementsNotFollowedByEdition": 0,
+                            "editor.blockAddition": 0,
+                            "editor.blockDeletion": 0,
+                            "editor.arrowAddition": 0,
+                            "editor.arrowDeletion": 0,
+                            "editor.firstTextEdit": 0,
+                            "editor.ratioMouseMovementsOverABlockOnMouseMovement": 0,
+                            "reviewer.textUpdateOfNonCreateBlocks": 0,
+                            "reviewer.arrowNodeAddition": 0,
+                            "reviewer.arrowNodeDeletion": 0,
+                            "reviewer.movementOfNonCreatedBlocks": 0
+                        }
+
+                        userTemporaryData[content.id] = {
+                            last: null
                         }
                     }
 
                     //analyze data
                     userData[content.id]["viewer.countInteractions"]++;
+                    //console.log(userData[content.id]["viewer.countInteractions"]++);
                     //"viewer.countMouseMovementsOverABlock"
 
-                    if (content.m && userData[content.id].last && userData[content.id].last.m) {
+                    if (content.m && userTemporaryData[content.id].last && userTemporaryData[content.id].last.m) {
                         userData[content.id]["viewer.mouseDistance"] +=
-                            Math.sqrt(Math.pow(content.m.left - userData[content.id].last.m.left, 2)
-                                + Math.pow(content.m.top - userData[content.id].last.m.top, 2));
+                            Math.sqrt(Math.pow(content.m.left - userTemporaryData[content.id].last.m.left, 2)
+                                + Math.pow(content.m.top - userTemporaryData[content.id].last.m.top, 2));
                     }
 
                     //"viewer.mouseMovementsNotFollowedByEdition"
 
-                    userData[content.id].last = content;
+                    userTemporaryData[content.id].last = content;
                 }
 
                 if (save) {
@@ -148,16 +145,31 @@ view.startAnalysis = function () {
 
                         for (let j in metrics) {
                             await view.insertAnalysis(db, currentDate.toISOString(), users[i],
-                                metrics[j], userData[users[i]][metrics[j]])
+                                metrics[j], userData[users[i]][metrics[j]]);
                         }
                     }
+
+                    userData = {};
+                    userTemporaryData = {};
                 }
             } catch (e) {
                 console.log("Unable to parse line " + e);
             }
 
             view.file.currentLine++;
+
+            if (view.analyzingProgress !== previousProgress) {
+                previousProgress = view.analyzingProgress;
+
+                //console.log("progress: " + view.analyzingProgress);
+
+                callback(null, view.analyzingProgress);
+            }
         }
+
+        callback(null, 100);
+
+        view.analyzing = false;
 
         db.close();
     }
@@ -197,6 +209,8 @@ view.setupDB = function (fileName) {
 }
 
 view.insertAnalysis = function (db, actionDate, userId, metric, metricValue) {
+    console.log("insert", userId, metric, metricValue);
+
     return new Promise(function (resolve) {
         db.run("INSERT INTO view_data VALUES (?, ?, ?, ?)", [actionDate, userId, metric, metricValue], function () {
             resolve();
@@ -206,6 +220,71 @@ view.insertAnalysis = function (db, actionDate, userId, metric, metricValue) {
 
 view.stopAnalysis = function () {
     view.analyzing = false;
+}
+
+view.getAnalysis = async function () {
+    if (view.file.name === null) {
+        throw new Error("There is no file loaded.");
+    }
+
+    if (view.analyzing) {
+        throw new Error("The process has already started.");
+    }
+
+    if (!fs.existsSync('projects/' + view.file.name + '-view.db')) {
+        throw new Error("The analysis does not exists.");
+    }
+
+    const db = await view.dbConnect();
+    const metrics = await view.dbRequest(db, "SELECT metric FROM view_data GROUP BY metric");
+
+    let data = {};
+
+    for (const metric of metrics) {
+        data[metric.metric] = {};
+
+        const users = await view.dbRequest(db,
+            "SELECT user_id, SUM(metric_value) AS sum FROM view_data WHERE metric = ? " +
+            "GROUP BY user_id ORDER BY sum",
+            [metric.metric]);
+
+        let rank = 0;
+
+        for (const user of users) {
+            data[metric.metric][user.user_id] = {
+                data: await view.dbRequest(db,
+                    "SELECT action_date, metric_value FROM view_data WHERE metric = ? AND user_id = ?",
+                    [metric.metric, user.user_id]), sum: user.sum, rank: rank
+            };
+
+            rank++;
+        }
+    }
+
+    return data;
+}
+
+view.dbConnect = async function () {
+    return new Promise(function (resolve, reject) {
+        const db = new sqlite3.Database('projects/' + view.file.name + '-view.db', (err) => {
+            if (err) {
+                return reject(err);
+            }
+
+            console.log('Connected to the in-memory SQlite database.');
+
+            resolve(db);
+        });
+    });
+}
+
+view.dbRequest = async function (db, request, parameters = []) {
+    return new Promise(function (resolve, reject) {
+        db.all(request, parameters, function (err, rows) {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
 }
 
 view.start = function (speed, callback) {

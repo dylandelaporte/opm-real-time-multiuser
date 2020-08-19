@@ -100,3 +100,23 @@ function uuidv4() {
         return v.toString(16);
     });
 }
+
+function getColorFromId(id) {
+    return intToHexadecimalColor(hashCode(id));
+}
+
+function hashCode(str) { // java String#hashCode
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
+}
+
+function intToHexadecimalColor(i){
+    var c = (i & 0x00FFFFFF)
+        .toString(16)
+        .toUpperCase();
+
+    return "#" + "00000".substring(0, 6 - c.length) + c;
+}

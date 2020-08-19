@@ -917,26 +917,6 @@ function firstContact() {
     socket.send(JSON.stringify({type: "first.contact"}));
 }
 
-function getColorFromId(id) {
-    return intToHexadecimalColor(hashCode(id));
-}
-
-function hashCode(str) { // java String#hashCode
-    var hash = 0;
-    for (var i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return hash;
-}
-
-function intToHexadecimalColor(i){
-    var c = (i & 0x00FFFFFF)
-        .toString(16)
-        .toUpperCase();
-
-    return "#" + "00000".substring(0, 6 - c.length) + c;
-}
-
 function addTemporaryUser() {
     socket.send(JSON.stringify({type: "set.user", id: "bob", mouse: "/dev/hidraw0", keyboard: "/dev/hidraw1"}));
 }
