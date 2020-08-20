@@ -1,6 +1,6 @@
 .idea
 
-admin/node_modules
-core/node_modules
-device/node_modules
+admin/node_modules/*
+core/node_modules/*
+device/node_modules/*
 
