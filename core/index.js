@@ -605,7 +605,7 @@ coreSocketServer.on("connection", client => {
         packet.clear();
 
         try {
-            packet.set(packet.KEYS.ANALYSIS, {data: await view.getAnalysis()});
+            packet.set(packet.KEYS.ANALYSIS, await view.getAnalysis());
         } catch (e) {
             logger.error(e);
 

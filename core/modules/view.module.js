@@ -65,6 +65,10 @@ view.startAnalysis = function (callback) {
     let userData = {};
     let userTemporaryData = {};
 
+    let temporaryData = {
+        elements: {}
+    };
+
     async function process() {
         const db = await view.setupDB(view.file.name);
 
@@ -90,7 +94,7 @@ view.startAnalysis = function (callback) {
 
                     save = true;
 
-                    console.log("refreshDate: " + limitDate);
+                    //console.log("refreshDate: " + limitDate);
                 }
 
                 if (content.id) {
@@ -104,33 +108,143 @@ view.startAnalysis = function (callback) {
                             "viewer.mouseMovementsNotFollowedByEdition": 0,
                             "editor.blockAddition": 0,
                             "editor.blockDeletion": 0,
+                            "editor.blockMovement": 0,
                             "editor.arrowAddition": 0,
                             "editor.arrowDeletion": 0,
                             "editor.firstTextEdit": 0,
-                            "editor.ratioMouseMovementsOverABlockOnMouseMovement": 0,
-                            "reviewer.textUpdateOfNonCreateBlocks": 0,
+                            "editor.textEdit": 0,
+                            "reviewer.textUpdateOfNonCreatedBlocks": 0,
                             "reviewer.arrowNodeAddition": 0,
                             "reviewer.arrowNodeDeletion": 0,
                             "reviewer.movementOfNonCreatedBlocks": 0
                         }
 
                         userTemporaryData[content.id] = {
-                            last: null
+                            last: null,
+                            followMovements: false,
+                            countFollowMovements: 0
                         }
                     }
 
-                    //analyze data
+                    //viewer.countInteractions
                     userData[content.id]["viewer.countInteractions"]++;
-                    //console.log(userData[content.id]["viewer.countInteractions"]++);
-                    //"viewer.countMouseMovementsOverABlock"
 
+                    //viewer.countMouseMovementsOverABlock
+                    if (content.m && content.e) {
+                        if (!content.m.click.left && !content.m.click.right && !content.m.click.wheel) {
+                            userData[content.id]["viewer.countMouseMovementsOverABlock"]++;
+                        }
+                    }
+
+                    //viewer.mouseDistance
                     if (content.m && userTemporaryData[content.id].last && userTemporaryData[content.id].last.m) {
                         userData[content.id]["viewer.mouseDistance"] +=
                             Math.sqrt(Math.pow(content.m.left - userTemporaryData[content.id].last.m.left, 2)
                                 + Math.pow(content.m.top - userTemporaryData[content.id].last.m.top, 2));
                     }
 
-                    //"viewer.mouseMovementsNotFollowedByEdition"
+                    //viewer.mouseMovementsNotFollowedByEdition
+                    if (content.m && (userTemporaryData[content.id].last === null
+                        || userTemporaryData[content.id].last.m === undefined)) {
+                        userTemporaryData[content.id].followMovements = true;
+                        userTemporaryData[content.id].countFollowMovements = 0;
+                    }
+
+                    if (userTemporaryData[content.id].followMovements) {
+                        if (save || (content.m && content.m.click.left && content.m.click.right
+                            && content.m.click.wheel)) {
+                            userTemporaryData[content.id].followMovements = false;
+
+                            if (userTemporaryData[content.id].countFollowMovements > 15) {
+                                userData[content.id]["viewer.mouseMovementsNotFollowedByEdition"] +=
+                                    userTemporaryData[content.id].countFollowMovements;
+                            }
+                        }
+                        else {
+                            userTemporaryData[content.id].countFollowMovements++;
+                        }
+                    }
+
+                    //editor.blockAddition
+                    if (content.a) {
+                        if (content.a.type === "new_object") {
+                            userData[content.id]["editor.blockAddition"]++;
+                        }
+                    }
+
+                    //editor.arrowAddition
+                    if (content.a) {
+                        if (content.a.type === "new_link") {
+                            userData[content.id]["editor.arrowAddition"]++;
+                        }
+                    }
+
+                    //reviewer.arrowNodeAddition
+                    if (content.a) {
+                        if (content.a.type === "new_node_link") {
+                            userData[content.id]["reviewer.arrowNodeAddition"]++;
+                        }
+                    }
+
+                    //reviewer.arrowNodeDeletion
+                    if (content.a) {
+                        if (content.a.type === "delete_node_link") {
+                            userData[content.id]["reviewer.arrowNodeDeletion"]++;
+                        }
+                    }
+
+                    if (content.e) {
+                        const elements = Object.keys(content.e);
+
+                        for (const element of elements) {
+                            if (!temporaryData.elements[element]) {
+                                temporaryData.elements[element] = {
+                                    userId: content.id,
+                                    type: content.e[element].type,
+                                    textEdit: false
+                                };
+                            }
+                            else {
+                                if (content.e[element].text) {
+                                    //editor.firstTextEdit
+                                    if (!temporaryData.elements[element].textEdit) {
+                                        temporaryData.elements[element].textEdit = true;
+                                        userData[content.id]["editor.firstTextEdit"]++;
+                                    }
+
+                                    //reviewer.textUpdateOfNonCreatedBlocks
+                                    if (temporaryData.elements[element].userId !== content.id) {
+                                        userData[content.id]["reviewer.textUpdateOfNonCreatedBlocks"]++;
+                                    }
+
+                                    //editor.textEdit
+                                    userData[content.id]["editor.textEdit"]++;
+                                }
+                                else if (content.m) {
+                                    if (content.m.click.left) {
+                                        //reviewer.movementOfNonCreatedBlocks
+                                        if (temporaryData.elements[element].userId !== content.id) {
+                                            userData[content.id]["review.movementOfNonCreatedBlocks"]++;
+                                        }
+
+                                        //editor.blockMovement
+                                        userData[content.id]["editor.blockMovement"]++;
+                                    }
+                                }
+                                else if (content.e[element].deleted) {
+                                    //editor.blockDeletion
+                                    if (temporaryData[element].type === "object"
+                                        || temporaryData[element].type === "process") {
+                                        userData[content.id]["editor.blockDeletion"]++;
+                                    }
+                                    //editor.arrowDeletion
+                                    else if (temporaryData[element].type.indexOf("arrow") >= 0) {
+                                        userData[content.id]["editor.arrowDeletion"]++;
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     userTemporaryData[content.id].last = content;
                 }
@@ -238,6 +352,12 @@ view.getAnalysis = async function () {
     const db = await view.dbConnect();
     const metrics = await view.dbRequest(db, "SELECT metric FROM view_data GROUP BY metric");
 
+    let summarize = {
+        viewer: {users: {}, count: 0},
+        editor: {users: {}, count: 0},
+        reviewer: {users: {}, count: 0}
+    };
+
     let data = {};
 
     for (const metric of metrics) {
@@ -248,12 +368,23 @@ view.getAnalysis = async function () {
             "GROUP BY user_id ORDER BY sum",
             [metric.metric]);
 
-        let rank = 0;
+        let rank = 1;
 
         for (const user of users) {
+            const metricGroup = metric.metric.split(".")[0];
+
+            summarize[metricGroup].count++;
+
+            if (!summarize[metricGroup].users[user.user_id]) {
+                summarize[metricGroup].users[user.user_id] = 0;
+            }
+
+            summarize[metricGroup].users[user.user_id] += rank;
+
             data[metric.metric][user.user_id] = {
                 data: await view.dbRequest(db,
-                    "SELECT action_date, metric_value FROM view_data WHERE metric = ? AND user_id = ?",
+                    "SELECT action_date, metric_value FROM view_data WHERE metric = ? AND user_id = ? " +
+                    "ORDER BY action_date",
                     [metric.metric, user.user_id]), sum: user.sum, rank: rank
             };
 
@@ -261,7 +392,7 @@ view.getAnalysis = async function () {
         }
     }
 
-    return data;
+    return {summarize: summarize, data: data};
 }
 
 view.dbConnect = async function () {

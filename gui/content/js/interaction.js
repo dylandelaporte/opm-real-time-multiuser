@@ -211,24 +211,71 @@ function updateCharts(data) {
         delete tmpCharts[row];
     }
 
+    function getRank(groupSummarize) {
+        const users = Object.keys(groupSummarize.users);
+
+        users.sort(function (a, b) {
+            if (groupSummarize.users[a] > groupSummarize.users[b]) {
+                return 1;
+            }
+            else if (groupSummarize.users[a] < groupSummarize.users[b]) {
+                return -1;
+            }
+            else {
+                return 0;
+            }
+        });
+
+        let textUsers = [];
+
+        for (const user of users) {
+            textUsers.push(user + " (" + parseInt((groupSummarize.users[user] / groupSummarize.count) * 100) + ")");
+        }
+
+        return textUsers.join(", ");
+    }
+
+    chartsContainer.innerHTML += "<div class='card'><div class='card-body'>" +
+        "<table class='table'>" +
+        "<thead><tr><th>Viewer</th><th>Editor</th><th>Reviewer</th></tr></thead>" +
+        "<tbody><tr><td>" + getRank(data.summarize.viewer) + "</td>" +
+        "<td>" + getRank(data.summarize.editor) + "</td>" +
+        "<td>" + getRank(data.summarize.reviewer) + "</td></tr></tbody>" +
+        "</table></div></div>";
+
     const metrics = Object.keys(data.data);
 
     for (const metric of metrics) {
-        console.log("metric", metric);
-
         const card = document.createElement("div");
         card.classList.add("card");
 
         const cardBody = document.createElement("div");
-        cardBody.classList.add("card-body");
+        cardBody.classList.add("card-body", "row");
 
         const chartDiv = document.createElement("div");
         chartDiv.classList.add("col-md-8");
+
+        const tableDiv = document.createElement("div");
+        tableDiv.classList.add("col-md-4");
+
+        const table = document.createElement("table");
+        table.classList.add("table");
+
+        const tHead = document.createElement("thead");
+        tHead.innerHTML = "<tr><th>#</th><th>User</th><th>Total</th></tr>";
+
+        const tBody = document.createElement("tbody");
 
         const canvas = document.createElement("canvas");
 
         chartDiv.appendChild(canvas);
         cardBody.appendChild(chartDiv);
+
+        table.appendChild(tHead);
+        table.appendChild(tBody);
+        tableDiv.appendChild(table);
+        cardBody.appendChild(tableDiv);
+
         card.appendChild(cardBody);
 
         const users = Object.keys(data.data[metric]);
@@ -236,20 +283,38 @@ function updateCharts(data) {
         let datasets = [];
 
         for (const user of users) {
-            const points = data.data[metric][user].data;
+            const userData = data.data[metric][user];
+            const points = userData.data;
             const color = getColorFromId(user);
+
+            tBody.innerHTML += "<tr>" +
+                "<th>" + userData.rank + "</th>" +
+                "<td>" + user + "</td>" +
+                "<td>" + userData.sum + "</td>" +
+                "</tr>";
 
             let formattedData = [];
 
-            for (const point of points) {
-                formattedData.push({x: new Date(point.action_date), y: point.metric_value});
+            for (let i = 0; i < points.length; i++) {
+                const currentDate = new Date(points[i].action_date);
+
+                formattedData.push({x: currentDate, y: points[i].metric_value});
+
+                if (i + 1 < points.length && new Date(points[i + 1].action_date) - currentDate > 30000) {
+                    let generatedDate = new Date(currentDate.getTime() + 30000);
+
+                    formattedData.push({x: generatedDate, y: 0});
+                }
             }
 
             datasets.push({
                 label: user,
                 backgroundColor: color,
                 borderColor: color,
-                fill: false,
+                steppedLine: true,
+                fill: true,
+                pointRadius: 0,
+                borderWidth: 0,
                 data: formattedData
             });
         }
