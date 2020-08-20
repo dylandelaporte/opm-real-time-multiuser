@@ -1,0 +1,19 @@
+{
+  "name": "opmmodel-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "ws": "^7.3.1",
+    "winston": "^3.2.1",
+    "winston-console-format": "^1.0.5",
+    "child_process": "^1.0.2",
+    "sqlite3": "^5.0.0"
+  }
+}
