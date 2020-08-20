@@ -17,4 +17,7 @@ echo $sed_data_dir
 sed "s/{CORE_PORT}/${core_port}/g; s/{GUI_PORT}/${gui_port}/g; s/{DIR}/${sed_data_dir}/g" \
 configurations/deployment.yml > $deployment_file
 
+docker pull dyde/opre-software-core:latest
+docker pull dyde/opre-software-gui:latest
+
 docker stack deploy --compose-file $deployment_file $instance_id
