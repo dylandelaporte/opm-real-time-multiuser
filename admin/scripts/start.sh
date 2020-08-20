@@ -6,7 +6,7 @@ gui_port=${3}
 
 dir=$(pwd)/data/instances/${instance_id}
 data_dir=${dir}/data
-deployment_dir=${DATA_DIR}/instances/${instance_id}/data
+deployment_dir=${data_dir}/instances/${instance_id}/data
 deployment_file=${dir}/deployment.yml
 
 mkdir -p $dir
