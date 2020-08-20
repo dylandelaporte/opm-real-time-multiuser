@@ -86,6 +86,8 @@ function connectToServer(serverUrl, errorCallback) {
         || serverUrl.match(new RegExp(/ws:\/\/localhost:[0-9]{4}/gi))) {
         $.notify("Connecting...", "info");
 
+        setCookie(server_url_cookie_name, "");
+
         connected(serverUrl, function (connected) {
             if (connected) {
                 console.log("success");
@@ -97,8 +99,6 @@ function connectToServer(serverUrl, errorCallback) {
                 location.href = "index.html";
             } else {
                 $.notify("Unable to connect to the server", "error");
-
-                setCookie(server_url_cookie_name, "")
 
                 if (errorCallback) {
                     errorCallback();

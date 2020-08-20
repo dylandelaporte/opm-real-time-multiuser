@@ -9,7 +9,7 @@ function connected (server_url, callback, keepConnection, connectedCallback, dis
         socket.close();
 
         callback(false);
-    }, 2000);
+    }, 5000);
 
     socket.onopen = function() {
         console.log("connected");
@@ -63,7 +63,7 @@ function setCookie(cname, cvalue, exdays) {
     var d = new Date();
     d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
     var expires = "expires="+d.toUTCString();
-    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";sameSite=strict;path=/";
 }
 
 function getCookie(cname) {

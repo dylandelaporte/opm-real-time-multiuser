@@ -8,7 +8,7 @@ RUN apk add --update --no-cache python3 build-base && ln -sf python3 /usr/bin/py
 RUN python3 -m ensurepip
 RUN pip3 install --no-cache --upgrade pip setuptools
 
-RUN apk add --update nodejs nodejs-npm eudev-dev
+RUN apk add --update nodejs nodejs-npm eudev-dev bash
 
 COPY package.json .
 RUN npm install && mkdir -p projects

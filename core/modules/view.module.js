@@ -365,7 +365,7 @@ view.getAnalysis = async function () {
 
         const users = await view.dbRequest(db,
             "SELECT user_id, SUM(metric_value) AS sum FROM view_data WHERE metric = ? " +
-            "GROUP BY user_id ORDER BY sum",
+            "GROUP BY user_id ORDER BY sum DESC",
             [metric.metric]);
 
         let rank = 1;
@@ -455,7 +455,7 @@ view.stop = function () {
 }
 
 view.getCountLines = async function (fileName) {
-    const {stdout, stderr} = await exec('./scripts/countLines.sh projects/' + fileName + '-log.json');
+    const {stdout, stderr} = await exec('scripts/countLines.sh projects/' + fileName + '-log.json');
     //console.log("test", stdout, stderr);
 
     if (stderr !== "") {
@@ -466,7 +466,7 @@ view.getCountLines = async function (fileName) {
 }
 
 view.getLine = async function (fileName, line) {
-    const {stdout, stderr} = await exec('./scripts/getLine.sh projects/' + fileName + '-log.json ' + line);
+    const {stdout, stderr} = await exec('scripts/getLine.sh projects/' + fileName + '-log.json ' + line);
     //console.log("test", stdout, stderr);
 
     if (stderr !== "") {

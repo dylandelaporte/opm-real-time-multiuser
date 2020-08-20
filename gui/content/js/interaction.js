@@ -229,7 +229,7 @@ function updateCharts(data) {
         let textUsers = [];
 
         for (const user of users) {
-            textUsers.push(user + " (" + parseInt((groupSummarize.users[user] / groupSummarize.count) * 100) + ")");
+            textUsers.push(user);
         }
 
         return textUsers.join(", ");
