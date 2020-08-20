@@ -6,13 +6,11 @@ gui_port=${3}
 
 dir=$(pwd)/data/instances/${instance_id}
 data_dir=${dir}/data
-deployment_dir=${data_dir}/instances/${instance_id}/data
 deployment_file=${dir}/deployment.yml
 
-mkdir -p $dir
 mkdir -p $data_dir
 
-sed_data_dir=$(echo $deployment_dir | sed 's_/_\\/_g')
+sed_data_dir=$(echo $data_dir | sed 's_/_\\/_g')
 
 echo $sed_data_dir
 
