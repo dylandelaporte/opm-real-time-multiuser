@@ -42,6 +42,7 @@ const logger = createLogger({
 
 devices.setWindowSize({width: 1500, height: 1500});
 project.setLogger(logger);
+view.setLogger(logger);
 
 const coreSocketServer = new ws.Server({port: 3000}/*, {pingInterval: 15000, pingTimeout: 10000}*/);
 const devicesSocketServer = new ws.Server({port: 5000});
@@ -323,6 +324,9 @@ coreSocketServer.on("connection", client => {
                     break;
                 case "view.stop":
                     viewStop();
+                    break;
+                case "view.reset":
+                    viewReset();
                     break;
             }
         }
@@ -619,7 +623,7 @@ coreSocketServer.on("connection", client => {
         packet.clear();
 
         try {
-            view.start(data.speed, function (error, data) {
+            view.start(data.goToLine, data.speed, function (error, data) {
                 packet.clear();
 
                 if (error) {
@@ -643,7 +647,35 @@ coreSocketServer.on("connection", client => {
     };
 
     const viewStop = () => {
-        view.stop();
+        packet.clear();
+
+        try {
+            view.stop();
+
+            packet.set(packet.KEYS.SUCCESS, "View stopped!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
+    };
+
+    const viewReset = () => {
+        packet.clear();
+
+        try {
+            view.reset();
+
+            packet.set(packet.KEYS.SUCCESS, "View reset!");
+        } catch (e) {
+            logger.error(e);
+
+            packet.set(packet.KEYS.ERROR, e.message);
+        }
+
+        packet.send(client);
     };
 
     client.onclose = () => {

@@ -11,11 +11,20 @@ const view = {
         name: null,
         currentLine: 0,
         countLines: 0
-    }
+    },
+    logger: null
 };
 
+view.setLogger = function (logger) {
+    view.logger = logger;
+}
+
 view.getInfo = function () {
-    let info = {playing: view.interval !== null, analyzing: view.analyzing, analyzingProgress: view.analyzingProgress};
+    let info = {
+        playing: view.interval !== null,
+        analyzing: view.analyzing,
+        analyzingProgress: view.analyzingProgress
+    };
 
     if (view.file.name !== null) {
         info.file = view.file;
@@ -52,6 +61,10 @@ view.startAnalysis = function (callback) {
 
     if (view.analyzing) {
         throw new Error("The process has already started.");
+    }
+
+    if (view.interval !== null) {
+        throw new Error("The file is in play mode.");
     }
 
     view.analyzing = true;
@@ -418,40 +431,73 @@ view.dbRequest = async function (db, request, parameters = []) {
     });
 }
 
-view.start = function (speed, callback) {
+view.start = function (goToLine, speed, callback) {
     if (view.file.name === null) {
         throw new Error("There is no file loaded.");
     }
 
-    if (!view.interval) {
-        view.file.currentLine = 0;
-
-        view.interval = setInterval(async function () {
-            //+1 line
-            view.file.currentLine++;
-
-            if (view.file.currentLine < view.file.countLines) {
-                try {
-                    //get data
-                    const line = await view.getLine(view.file.name, view.file.currentLine);
-                    const content = JSON.parse(line[1]);
-
-                    //send data
-                    callback(null, {date: line[0], content: content});
-                } catch (e) {
-                    console.log("Unable to parse line " + e);
-                }
-            } else {
-                view.stop();
-            }
-        }, (speed < 1000 && speed > 0) ? speed : 900);
+    if (view.analyzing) {
+        throw new Error("The file is in analysis mode.");
     }
+
+    if (view.interval !== null) {
+        throw new Error("The file is playing.");
+    }
+
+    if (goToLine == null || goToLine > view.file.countLines) {
+        goToLine = view.file.countLines - 1;
+    }
+
+    if (goToLine < view.file.currentLine) {
+        view.file.currentLine = 0;
+    }
+
+    view.interval = setInterval(async function () {
+        //+1 line
+        view.file.currentLine++;
+
+        if (view.file.currentLine < goToLine) {
+            try {
+                //get data
+                const line = await view.getLine(view.file.name, view.file.currentLine);
+                const content = JSON.parse(line[1]);
+
+                //send data
+                callback(null, {line: view.file.currentLine, date: line[0], content: content});
+            } catch (e) {
+                view.logger.error(e);
+                callback(e.message);
+            }
+        } else {
+            view.stop();
+
+            callback(null, view.getInfo());
+        }
+    }, (speed < 1000 && speed > 0) ? speed : 900);
 }
 
 view.stop = function () {
     if (view.interval) {
         clearInterval(view.interval);
+
+        view.interval = null;
     }
+}
+
+view.reset = function () {
+    if (view.file.name === null) {
+        throw new Error("There is no file loaded.");
+    }
+
+    if (view.analyzing) {
+        throw new Error("The file is in analysis mode.");
+    }
+
+    if (view.interval !== null) {
+        view.stop();
+    }
+
+    view.file.currentLine = 0;
 }
 
 view.getCountLines = async function (fileName) {

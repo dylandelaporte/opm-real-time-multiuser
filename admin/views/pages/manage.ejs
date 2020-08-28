@@ -31,7 +31,7 @@
                 + 'ws://' + location.host + '/<%= instance.id %>&managed_instance=true'"
            class="btn btn-outline-primary">Connect</a>
         <a href="/view/<%= instance.id %>/interaction.html" class="btn btn-outline-secondary">Interaction analysis</a>
-        <a href="/view/<%= instance.id %>/activity.html" class="btn btn-outline-secondary">Review activity</a>
+        <a href="/view/<%= instance.id %>/history.html" class="btn btn-outline-secondary">Review activity</a>
         <a href="/view/<%= instance.id %>/config.html" class="btn btn-outline-dark">Configure</a>
     <% } else { %>
         <a href="/manage/<%= instance.id %>/start" class="btn btn-primary">Start</a>

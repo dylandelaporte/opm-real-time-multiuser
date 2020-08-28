@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/all.min.css">
+    <link rel="stylesheet" href="css/Chart.min.css">
+
+    <link rel="stylesheet" href="css/history.css">
+</head>
+<body>
+<div class="jumbotron jumbotron-fluid">
+    <div class="container">
+        <h4>History review</h4>
+        <div class="row">
+            <div class="col-md-3">
+                <form id="project-form" class="form-inline">
+                    <div class="row">
+                        <div class="col mb-2">
+                            <select id="project-select" name="project-select" class="form-control"></select>
+                        </div>
+                        <div class="col">
+                            <button type="submit" class="btn btn-outline-primary mb-2">Select</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <button type="button" id="play-button" class="btn btn-primary">Play</button>
+                <a href="index.html" class="btn btn-outline-dark">Go back</a>
+            </div>
+            <div class="col-md-3">
+                <span class="form-group">
+                    <input type="range" id="line-range-input" class="form-control-range" value="0">
+                </span>
+                <span><span id="current-line-text">0</span>/<span id="count-lines-text">--</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="users">
+    <span>Online editors: </span>
+</div>
+<div id="view-container"></div>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/notify.min.js"></script>
+
+<script src="js/konva.min.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/editor-elements.js"></script>
+<script src="js/history.js"></script>
+</body>
+</html>
