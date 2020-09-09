@@ -1,6 +1,7 @@
 .idea
 
 admin/node_modules/*
+admin/data/*
 core/node_modules/*
 device/node_modules/*
 

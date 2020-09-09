@@ -12,7 +12,7 @@ const AU = require('ansi_up');
 const ansi_up = new AU.default;
 
 const app = express();
-const port = 3030;
+const port = 80;
 
 let proxies = {};
 
