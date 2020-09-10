@@ -7,7 +7,8 @@ This project is a set of four sub-projects helping to setup the entire system.
 - device containing scripts to read data from multiple inputs
 
 ## Deployment
+Please execute the script below and make sure the user has sudo access.
 ```bash
-chmod +x install.sh
-./install.sh
+chmod +x install-and-start.sh
+./install-and-start.sh
 ```

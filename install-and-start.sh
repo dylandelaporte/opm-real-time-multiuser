@@ -18,12 +18,10 @@ then
 	docker swarm init
 fi
 
-DATA_DIR=/opt/opmmodel
-
-mkdir -p $DATA_DIR
-chmod 777 $DATA_DIR
-
 cd admin/
 
+mkdir -p data/database
+mkdir -p data/instances
+
 npm install
-env DATA_DIR=${DATA_DIR} npm start
+npm start
