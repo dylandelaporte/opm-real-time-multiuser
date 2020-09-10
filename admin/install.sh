@@ -1,7 +1,7 @@
 #!/bin/bash
 
 apt update
-apt install apt-transport-https ca-certificates curl software-properties-common gnupg2 nodejs jq
+apt install apt-transport-https ca-certificates curl software-properties-common gnupg2
 
 if ! docker -v >/dev/null 2>&1
 then
@@ -23,7 +23,4 @@ DATA_DIR=/opt/opmmodel
 mkdir -p $DATA_DIR
 chmod 777 $DATA_DIR
 
-cd admin/
-
-npm install
-env DATA_DIR=${DATA_DIR} npm start
+env DATA_DIR=${DATA_DIR} docker stack deploy --compose-file admin/docker-compose.yml opmmodel
